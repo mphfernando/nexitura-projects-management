@@ -37,8 +37,7 @@ export default function Login() {
       <div className="w-full h-screen sm:h-auto max-w-none sm:max-w-sm bg-[var(--panel)] border-0 sm:border border-[var(--line)] rounded-none sm:rounded-2xl shadow-none sm:shadow-[var(--shadow-md)] overflow-hidden flex flex-col justify-center sm:block">
         <div className="h-1.5 bg-gradient-to-r from-[var(--accent)] to-[var(--purple)]" />
         <div className="p-8">
-          <div className="w-10 h-10 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center font-display font-bold mb-4">N</div>
-          <h1 className="text-xl font-bold mb-1">Nexitura Hub</h1>
+          <img src="/logo.jpeg" alt="Nexitura" className="h-12 w-auto mb-4 -ml-1" />
           <p className="text-sm text-[var(--muted)] mb-6">Sign in to view your projects.</p>
           <form onSubmit={onSubmit} className="space-y-4">
             <div>

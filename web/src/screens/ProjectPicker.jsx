@@ -38,7 +38,7 @@ export default function ProjectPicker({ onOpenProject, onOpenAdmin, onNavigate }
     <div className="max-w-4xl mx-auto px-5 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center font-display font-bold">N</div>
+          <img src="/logo.jpeg" alt="Nexitura" className="h-9 w-auto" />
           <div>
             <h1 className="text-xl font-bold leading-tight">Projects</h1>
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{profile.role}</span>

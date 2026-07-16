@@ -21,7 +21,9 @@ function timeAgo(ts) {
 function reportStatus(report, tasks) {
   if (report.status !== "added" || !report.taskId) return report.status === "added" ? "added" : "new";
   const task = tasks.find(t => t.id === report.taskId);
-  if (!task) return "added";
+  // The linked Tracker task was deleted — treat the report as unresolved
+  // again so it can be re-added instead of getting stuck.
+  if (!task) return "new";
   return task.status === "Completed" ? "completed" : "added";
 }
 
@@ -135,6 +137,7 @@ export default function Bugs({ project, data, update }) {
             {reports.map(r => {
               const st = reportStatus(r, data.tasks);
               const badge = statusBadge[st];
+              const wasReissued = st === "new" && r.status === "added" && r.taskId;
               return (
                 <div key={r.id} className="py-3 first:pt-0">
                   <div className="flex flex-wrap gap-2.5 items-start">
@@ -145,6 +148,7 @@ export default function Bugs({ project, data, update }) {
                       </div>
                       {r.description && <p className="text-xs text-[var(--muted)] mt-1">{r.description}</p>}
                       <p className="text-[11px] text-[var(--muted)] mt-1">Reported by {r.reportedBy} · {timeAgo(r.createdAt)}</p>
+                      {wasReissued && <p className="text-[11px] text-[var(--amber)] mt-1">Its linked task was deleted from the Tracker — needs to be re-added.</p>}
                     </div>
                     {isSuperAdmin && st === "new" && (
                       <Btn variant="secondary" onClick={() => setAddingId(addingId === r.id ? null : r.id)}>Add to Tracker</Btn>

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "./firebase.js";
 import { AppStateProvider, useAppState } from "./hooks/useAppState.jsx";
 import Login from "./screens/Login.jsx";
 import NoAccess from "./screens/NoAccess.jsx";
@@ -21,8 +23,18 @@ function Router() {
   function backToPicker() { setOpenProject(null); setInitialTab(null); setAdminOpen(false); }
   // Used by notification clicks: jump straight to a project and a specific tab
   // (e.g. a bug report notification opens that project's Bugs tab directly).
-  function openProjectTab(projectId, tab) {
-    const p = projects.find(x => x.id === projectId);
+  // Falls back to a direct fetch if the picker's cached project list hasn't
+  // loaded that project yet, so a click never silently does nothing.
+  async function openProjectTab(projectId, tab) {
+    let p = projects.find(x => x.id === projectId);
+    if (!p) {
+      try {
+        const snap = await getDoc(doc(db, "projects", projectId));
+        if (snap.exists()) p = { id: snap.id, ...snap.data() };
+      } catch (e) {
+        console.error("Could not open project from notification:", e.message);
+      }
+    }
     if (!p) return;
     setAdminOpen(false);
     setOpenProject(p);
