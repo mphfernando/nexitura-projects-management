@@ -2,12 +2,10 @@ import { useEffect, useState, useCallback } from "react";
 import { collection, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
 import { db, getSecondaryAuth, createUserWithEmailAndPassword, signOut } from "../../firebase.js";
 import { useAppState } from "../../hooks/useAppState.jsx";
+import { computeMembers } from "../../lib/members.js";
 import { Btn, Input, Select, Card, EmptyState } from "../../components/ui.jsx";
 
 const ROLE_LABELS = { developer: "Developer", client: "Client", admin: "Admin", superadmin: "Super Admin" };
-// Only these roles can be assigned tasks by name — admins/superadmins manage
-// the system, they aren't "assignees" of project work.
-const ASSIGNABLE_ROLES = ["developer", "client"];
 
 export default function UsersPane() {
   const { projects } = useAppState();
@@ -26,17 +24,12 @@ export default function UsersPane() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  // Keeps projects/{id}.members in sync so project screens can list assignable
-  // people (with real names/emails, for notifications) without needing to
-  // list /users. Only Developer/Client accounts are assignable.
-  async function syncProjectMembers(projectId, allUsers) {
-    const members = allUsers
-      .filter(u => (u.projects || []).includes(projectId) && ASSIGNABLE_ROLES.includes(u.role))
-      .map(u => ({ uid: u.uid, name: u.name || u.email, email: u.email }));
-    await updateDoc(doc(db, "projects", projectId), { members });
-  }
-  async function syncAllProjectsFor(u, updatedUsers) {
-    await Promise.all((u.projects || []).map(pid => syncProjectMembers(pid, updatedUsers)));
+  // Keeps every project's members list (Developers with access + all
+  // Admin/Super Admin accounts) in sync so Tracker's assignee dropdown and
+  // notifications always reflect current accounts, without needing every
+  // viewer to have permission to list /users.
+  async function resyncAllProjects(allUsers) {
+    await Promise.all(projects.map(p => updateDoc(doc(db, "projects", p.id), { members: computeMembers(allUsers, p.id) })));
   }
 
   async function createUser() {
@@ -49,9 +42,12 @@ export default function UsersPane() {
       const cred = await createUserWithEmailAndPassword(sAuth, email.trim(), pass);
       const uid = cred.user.uid;
       await signOut(sAuth);
-      await setDoc(doc(db, "users", uid), { email: email.trim(), name: name.trim(), role, projects: [] });
+      const newUser = { uid, email: email.trim(), name: name.trim(), role, projects: [] };
+      await setDoc(doc(db, "users", uid), { email: newUser.email, name: newUser.name, role: newUser.role, projects: newUser.projects });
+      const updated = [...(users || []), newUser];
+      setUsers(updated);
+      await resyncAllProjects(updated);
       setName(""); setEmail(""); setPass("");
-      await load();
     } catch (e) {
       setErr(e.message);
     } finally { setBusy(false); }
@@ -60,15 +56,14 @@ export default function UsersPane() {
     await updateDoc(doc(db, "users", u.uid), { role: newRole });
     const updated = users.map(x => x.uid === u.uid ? { ...x, role: newRole } : x);
     setUsers(updated);
-    // role change affects assignability everywhere they're a member
-    await syncAllProjectsFor({ ...u, role: newRole }, updated);
+    await resyncAllProjects(updated);
   }
   async function changeName(u, newName) {
     if (newName === (u.name || "")) return;
     await updateDoc(doc(db, "users", u.uid), { name: newName });
     const updated = users.map(x => x.uid === u.uid ? { ...x, name: newName } : x);
     setUsers(updated);
-    await syncAllProjectsFor(u, updated);
+    await resyncAllProjects(updated);
   }
   async function toggleProject(u, pid, checked) {
     const projectsList = new Set(u.projects || []);
@@ -77,7 +72,7 @@ export default function UsersPane() {
     await updateDoc(doc(db, "users", u.uid), { projects: nextProjects });
     const updated = users.map(x => x.uid === u.uid ? { ...x, projects: nextProjects } : x);
     setUsers(updated);
-    await syncProjectMembers(pid, updated);
+    await updateDoc(doc(db, "projects", pid), { members: computeMembers(updated, pid) });
   }
 
   return (
@@ -99,7 +94,7 @@ export default function UsersPane() {
 
       <Card>
         <h2 className="font-bold text-[15px] mb-1.5">All users</h2>
-        <p className="text-xs text-[var(--muted)] mb-3">Only Developer and Client accounts can be assigned tasks by name in a project's Weekly Tracker.</p>
+        <p className="text-xs text-[var(--muted)] mb-3">Developers can be assigned tasks in projects they have access to. Admins and Super Admins are assignable in every project automatically.</p>
         {users === null ? (
           <EmptyState>Loading…</EmptyState>
         ) : users.length === 0 ? (
@@ -117,24 +112,29 @@ export default function UsersPane() {
                     {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </Select>
                 </div>
-                <div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] block mb-1.5">Project access</span>
-                  {projects.length === 0 ? (
-                    <span className="text-xs text-[var(--muted)]">No projects exist yet.</span>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {projects.map(p => {
-                        const checked = (u.projects || []).includes(p.id);
-                        return (
-                          <label key={p.id} className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full cursor-pointer transition-colors ${checked ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "bg-[var(--grey-soft)] text-[var(--muted)]"}`}>
-                            <input type="checkbox" className="w-3.5 h-3.5" checked={checked} onChange={e => toggleProject(u, p.id, e.target.checked)} />
-                            {p.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                {(u.role === "developer" || u.role === "client") && (
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] block mb-1.5">Project access</span>
+                    {projects.length === 0 ? (
+                      <span className="text-xs text-[var(--muted)]">No projects exist yet.</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {projects.map(p => {
+                          const checked = (u.projects || []).includes(p.id);
+                          return (
+                            <label key={p.id} className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full cursor-pointer transition-colors ${checked ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "bg-[var(--grey-soft)] text-[var(--muted)]"}`}>
+                              <input type="checkbox" className="w-3.5 h-3.5" checked={checked} onChange={e => toggleProject(u, p.id, e.target.checked)} />
+                              {p.name}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(u.role === "admin" || u.role === "superadmin") && (
+                  <span className="text-xs text-[var(--muted)]">Has access to all projects.</span>
+                )}
               </div>
             ))}
           </div>

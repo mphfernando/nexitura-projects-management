@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { DOC } from "../lib/seed.js";
+import { logActivity } from "../lib/activity.js";
+import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Textarea, FieldLabel, Card, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
-export default function Requirements({ data, update }) {
+export default function Requirements({ project, data, update }) {
+  const { profile } = useAppState();
   const { vers } = data;
   const [openDocs, setOpenDocs] = useState(() => new Set([0]));
   const [f, setF] = useState({ num: "", title: "", date: "", changes: "" });
@@ -19,6 +22,7 @@ export default function Requirements({ data, update }) {
         changes: f.changes.split("\n").map(s => s.trim()).filter(Boolean),
       }],
     }));
+    logActivity(project.id, profile, "requirement version added", `v${num} — ${title}`);
     setF({ num: "", title: "", date: "", changes: "" });
   }
   function del(id) {

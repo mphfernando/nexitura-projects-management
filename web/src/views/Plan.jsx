@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { PHASES } from "../lib/seed.js";
 import { d, fdate, todaySerial, isoToSerial, serialToISO } from "../lib/dates.js";
+import { logActivity } from "../lib/activity.js";
+import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Select, FieldLabel, Hint } from "../components/ui.jsx";
 
 function planStart(plan) { return Math.min(...plan.map(p => p.start), 46174); }
 function planEnd(plan) { return Math.max(...plan.map(p => p.end), 46326); }
 
-export default function Plan({ data, update, showDev, showProg }) {
+export default function Plan({ project, data, update, showDev, showProg }) {
+  const { profile } = useAppState();
   const { plan } = data;
   const [editingId, setEditingId] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -37,11 +40,14 @@ export default function Plan({ data, update, showDev, showProg }) {
       const code = phase + "." + (d0.plan.filter(x => x.phase === phase).length + 1);
       return { ...d0, plan: [...d0.plan, { id: "p" + Date.now(), code, phase, name, owner: f.owner.trim(), start: s, end: en, pct, status: f.status }] };
     });
+    logActivity(project.id, profile, "plan task saved", name);
     closeEditor();
   }
   function del() {
     if (!editingId || !confirm("Delete this plan task?")) return;
+    const r = plan.find(x => x.id === editingId);
     update(d0 => ({ ...d0, plan: d0.plan.filter(x => x.id !== editingId) }));
+    logActivity(project.id, profile, "plan task deleted", r?.name);
     closeEditor();
   }
 
@@ -95,6 +101,9 @@ export default function Plan({ data, update, showDev, showProg }) {
       )}
 
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-2xl shadow-[var(--shadow-sm)] p-4 overflow-x-auto">
+        <div className="sm:hidden flex justify-center mb-2.5">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--accent)] bg-[var(--accent-soft)] px-3 py-1.5 rounded-full">← Scroll to see full chart →</span>
+        </div>
         <div className="min-w-[860px] relative">
           <div className="flex ml-[260px] border-b border-[var(--line)] text-[10.5px] uppercase tracking-wide text-[var(--muted)]">
             {parts.map((p, i) => <div key={i} style={{ width: p.w + "%" }} className="border-l border-[var(--line)] px-1.5 py-0.5 overflow-hidden">{p.label}</div>)}

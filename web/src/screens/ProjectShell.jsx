@@ -8,6 +8,7 @@ import Requirements from "../views/Requirements.jsx";
 import Plan from "../views/Plan.jsx";
 import Milestones from "../views/Milestones.jsx";
 import Overview from "../views/Overview.jsx";
+import Activity from "../views/Activity.jsx";
 import NotificationBell from "../components/NotificationBell.jsx";
 
 const NAV_ICONS = {
@@ -16,6 +17,7 @@ const NAV_ICONS = {
   plan: <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />,
   milestones: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01z" />,
   overview: <path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />,
+  activity: <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />,
 };
 
 // Renders one open project: its own header, its 5 working tabs, nothing else.
@@ -53,6 +55,10 @@ export default function ProjectShell({ project, onBackToProjects, onOpenAdmin })
         </div>
         <small className="text-white/50 text-xs">{project.name}</small>
         <span className="ml-auto text-[11px] text-white/50">{statusLabel}</span>
+        <span className="hidden sm:inline-flex items-center gap-1.5 text-xs bg-white/10 px-2.5 py-1 rounded-full">
+          {profile.name || profile.email}
+          <span className="opacity-60 uppercase text-[10px] font-bold">{profile.role}</span>
+        </span>
         <NotificationBell />
         {isUnrestricted && <button onClick={onOpenAdmin} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">Admin Panel</button>}
         <button onClick={onBackToProjects} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">← Projects</button>
@@ -88,10 +94,11 @@ export default function ProjectShell({ project, onBackToProjects, onOpenAdmin })
         {data && (
           <>
             {activeTab === "tracker" && <Tracker project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} />}
-            {activeTab === "reqs" && <Requirements data={data} update={update} />}
-            {activeTab === "plan" && <Plan data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} />}
-            {activeTab === "milestones" && <Milestones data={data} update={update} />}
-            {activeTab === "overview" && <Overview data={data} showProg={fieldOK("progress")} />}
+            {activeTab === "reqs" && <Requirements project={project} data={data} update={update} />}
+            {activeTab === "plan" && <Plan project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} />}
+            {activeTab === "milestones" && <Milestones project={project} data={data} update={update} />}
+            {activeTab === "overview" && <Overview data={data} showProg={fieldOK("progress")} showDev={fieldOK("developerNames")} />}
+            {activeTab === "activity" && <Activity projectId={project.id} />}
           </>
         )}
       </main>

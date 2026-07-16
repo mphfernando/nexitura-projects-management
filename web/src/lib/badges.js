@@ -3,3 +3,4 @@ export const prTone = p => p === "High" ? "high" : (p === "Medium" ? "med" : "lo
 export const catTone = c => c === "Bug" ? "bug" : (c === "UI Issue" ? "ui" : "func");
 export const catShort = c => c === "Function Task" ? "Function" : c === "UI Issue" ? "UI" : "Bug";
 export const NEXT_STATUS = { "Not Started": "In Progress", "In Progress": "Completed", "Completed": "Not Started" };
+export const prBorderColor = p => p === "High" ? "var(--red)" : (p === "Medium" ? "var(--blue)" : "var(--muted)");

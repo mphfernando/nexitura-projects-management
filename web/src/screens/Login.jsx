@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { auth, signInWithEmailAndPassword } from "../firebase.js";
+import { auth, signInWithEmailAndPassword, sendPasswordResetEmail } from "../firebase.js";
 import { Btn, Input, FieldLabel } from "../components/ui.jsx";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
-    setErr(""); setBusy(true);
+    setErr(""); setNotice(""); setBusy(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), pass);
     } catch (e2) {
@@ -20,9 +21,20 @@ export default function Login() {
     }
   }
 
+  async function onForgotPassword() {
+    setErr(""); setNotice("");
+    if (!email.trim()) { setErr("Enter your email above first, then tap \"Forgot password\"."); return; }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setNotice("Password reset email sent — check your inbox.");
+    } catch (e2) {
+      setErr(e2.message);
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm bg-[var(--panel)] border border-[var(--line)] rounded-2xl shadow-[var(--shadow-md)] overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-0 sm:p-6">
+      <div className="w-full h-screen sm:h-auto max-w-none sm:max-w-sm bg-[var(--panel)] border-0 sm:border border-[var(--line)] rounded-none sm:rounded-2xl shadow-none sm:shadow-[var(--shadow-md)] overflow-hidden flex flex-col justify-center sm:block">
         <div className="h-1.5 bg-gradient-to-r from-[var(--accent)] to-[var(--purple)]" />
         <div className="p-8">
           <div className="w-10 h-10 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center font-display font-bold mb-4">N</div>
@@ -34,11 +46,15 @@ export default function Login() {
               <Input id="loginEmail" type="text" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div>
-              <FieldLabel htmlFor="loginPass">Password</FieldLabel>
+              <div className="flex items-center justify-between">
+                <FieldLabel htmlFor="loginPass">Password</FieldLabel>
+                <button type="button" onClick={onForgotPassword} className="text-[11px] font-semibold text-[var(--accent)] mb-1.5">Forgot password?</button>
+              </div>
               <Input id="loginPass" type="password" autoComplete="current-password" required value={pass} onChange={e => setPass(e.target.value)} />
             </div>
             <Btn type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Btn>
             {err && <div className="rounded-xl bg-[var(--red-soft)] text-[var(--red)] text-xs px-3 py-2.5">{err}</div>}
+            {notice && <div className="rounded-xl bg-[var(--green-soft)] text-[var(--green)] text-xs px-3 py-2.5">{notice}</div>}
           </form>
         </div>
       </div>

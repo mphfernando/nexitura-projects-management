@@ -1,24 +1,34 @@
 import { useState } from "react";
 import { fdate, isoToSerial } from "../lib/dates.js";
 import { stTone, NEXT_STATUS } from "../lib/badges.js";
+import { logActivity } from "../lib/activity.js";
+import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, FieldLabel, Card, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
-export default function Milestones({ data, update }) {
+export default function Milestones({ project, data, update }) {
+  const { profile } = useAppState();
   const { miles } = data;
   const [f, setF] = useState({ name: "", date: "", note: "" });
+  const log = (action, detail) => logActivity(project.id, profile, action, detail);
 
   function submit(e) {
     e.preventDefault();
     const name = f.name.trim(); if (!name || !f.date) return;
     update(d => ({ ...d, miles: [...d.miles, { id: "m" + Date.now(), name, note: f.note.trim(), when: isoToSerial(f.date), status: "Not Started" }] }));
+    log("milestone added", name);
     setF({ name: "", date: "", note: "" });
   }
   function cycleStatus(id) {
-    update(d => ({ ...d, miles: d.miles.map(m => m.id === id ? { ...m, status: NEXT_STATUS[m.status] } : m) }));
+    const m = miles.find(x => x.id === id);
+    const next = NEXT_STATUS[m.status];
+    update(d => ({ ...d, miles: d.miles.map(x => x.id === id ? { ...x, status: next } : x) }));
+    log("milestone status changed", `"${m.name}" → ${next}`);
   }
   function del(id) {
+    const m = miles.find(x => x.id === id);
     if (!confirm("Delete this milestone?")) return;
-    update(d => ({ ...d, miles: d.miles.filter(m => m.id !== id) }));
+    update(d => ({ ...d, miles: d.miles.filter(x => x.id !== id) }));
+    log("milestone deleted", m?.name);
   }
 
   const sorted = [...miles].sort((a, b) => a.when - b.when);

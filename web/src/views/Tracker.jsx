@@ -1,23 +1,29 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { currentWeekId, weekRange, isoToSerial, serialToISO } from "../lib/dates.js";
-import { stTone, prTone, catTone, catShort, NEXT_STATUS } from "../lib/badges.js";
+import { stTone, prTone, catTone, catShort, NEXT_STATUS, prBorderColor } from "../lib/badges.js";
 import { notifyAssignment } from "../lib/notify.js";
+import { logActivity } from "../lib/activity.js";
+import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Select, Textarea, FieldLabel, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
 export default function Tracker({ project, data, update, showDev, showProg }) {
+  const { profile } = useAppState();
   const { weeks, tasks } = data;
   const members = project.members || [];
   const [openWeeks, setOpenWeeks] = useState(() => new Set(data.openWeeks || [currentWeekId(weeks), "wk1", "wk2", "wk3"]));
   const [editingWeekId, setEditingWeekId] = useState(null);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [fCat, setFCat] = useState(""); const [fStatus, setFStatus] = useState(""); const [fWho, setFWho] = useState(""); const [q, setQ] = useState("");
+  const [showEmpty, setShowEmpty] = useState(false);
   const [addWeek, setAddWeek] = useState(currentWeekId(weeks));
   const [addForm, setAddForm] = useState({ name: "", cat: "Function Task", priority: "Medium", whoUid: "", desc: "" });
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   const filtering = fCat || fStatus || fWho || q;
   const nowId = currentWeekId(weeks);
 
   function memberByUid(uid) { return members.find(m => m.uid === uid); }
+  const log = (action, detail) => logActivity(project.id, profile, action, detail);
 
   function notifyIfAssigned(task, weekId) {
     if (!task.whoUid) return;
@@ -40,11 +46,16 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
     setEditingWeekId(null);
   }
   function cycleStatus(taskId) {
-    update(d => ({ ...d, tasks: d.tasks.map(t => t.id === taskId ? { ...t, status: NEXT_STATUS[t.status] } : t) }));
+    const t = tasks.find(x => x.id === taskId);
+    const next = NEXT_STATUS[t.status];
+    update(d => ({ ...d, tasks: d.tasks.map(x => x.id === taskId ? { ...x, status: next } : x) }));
+    log("task status changed", `"${t.name}" → ${next}`);
   }
   function deleteTask(taskId) {
+    const t = tasks.find(x => x.id === taskId);
     if (!confirm("Delete this task?")) return;
-    update(d => ({ ...d, tasks: d.tasks.filter(t => t.id !== taskId) }));
+    update(d => ({ ...d, tasks: d.tasks.filter(x => x.id !== taskId) }));
+    log("task deleted", t?.name);
   }
   function saveTaskEdit(taskId, form) {
     const m = memberByUid(form.whoUid);
@@ -52,65 +63,93 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
     const patch = { name: form.name, desc: form.desc, cat: form.cat, priority: form.priority, status: form.status, week: form.week, whoUid: form.whoUid, who: m ? m.name : "", whoEmail: m ? m.email : "" };
     update(d => ({ ...d, tasks: d.tasks.map(t => t.id === taskId ? { ...t, ...patch } : t) }));
     if (form.whoUid && form.whoUid !== prevTask?.whoUid) notifyIfAssigned(patch, form.week);
+    log("task edited", patch.name);
     setEditingTaskId(null);
   }
-  function submitAdd(e) {
-    e.preventDefault();
+  function addTask(weekId) {
     const name = addForm.name.trim(); if (!name) return;
     const m = memberByUid(addForm.whoUid);
-    const task = { id: "t" + Date.now(), week: addWeek, cat: addForm.cat, priority: addForm.priority, whoUid: addForm.whoUid, who: m ? m.name : "", whoEmail: m ? m.email : "", name, desc: addForm.desc.trim(), status: "Not Started" };
+    const task = { id: "t" + Date.now(), week: weekId, cat: addForm.cat, priority: addForm.priority, whoUid: addForm.whoUid, who: m ? m.name : "", whoEmail: m ? m.email : "", name, desc: addForm.desc.trim(), status: "Not Started" };
     update(d => ({ ...d, tasks: [...d.tasks, task] }));
-    notifyIfAssigned(task, addWeek);
-    setOpenWeeks(prev => new Set(prev).add(addWeek));
+    notifyIfAssigned(task, weekId);
+    log("task added", name);
+    setOpenWeeks(prev => new Set(prev).add(weekId));
     setAddForm({ name: "", cat: "Function Task", priority: "Medium", whoUid: "", desc: "" });
   }
+  function submitAdd(e) { e.preventDefault(); addTask(addWeek); setMobileSheetOpen(false); }
   function jumpToNow() {
     setOpenWeeks(prev => new Set(prev).add(nowId));
     document.querySelector(`[data-week="${nowId}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  const addFormFields = (
+    <>
+      <div className="sm:col-span-2">
+        <FieldLabel>Task name</FieldLabel>
+        <Input required value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Fix seller login redirect" />
+      </div>
+      <div>
+        <FieldLabel>Week</FieldLabel>
+        <Select value={addWeek} onChange={e => setAddWeek(e.target.value)}>
+          {weeks.map(w => <option key={w.id} value={w.id}>{w.label} · {weekRange(w)}</option>)}
+        </Select>
+      </div>
+      <div>
+        <FieldLabel>Type</FieldLabel>
+        <Select value={addForm.cat} onChange={e => setAddForm(f => ({ ...f, cat: e.target.value }))}>
+          <option>Function Task</option><option>UI Issue</option><option>Bug</option>
+        </Select>
+      </div>
+      <div>
+        <FieldLabel>Priority</FieldLabel>
+        <Select value={addForm.priority} onChange={e => setAddForm(f => ({ ...f, priority: e.target.value }))}>
+          <option>High</option><option>Medium</option><option>Low</option>
+        </Select>
+      </div>
+      <div>
+        <FieldLabel>Assigned to</FieldLabel>
+        <Select value={addForm.whoUid} onChange={e => setAddForm(f => ({ ...f, whoUid: e.target.value }))}>
+          <option value="">Unassigned</option>
+          {members.map(m => <option key={m.uid} value={m.uid}>{m.name}</option>)}
+        </Select>
+      </div>
+      <div className="col-span-full">
+        <FieldLabel>Description (optional)</FieldLabel>
+        <Textarea rows={1} value={addForm.desc} onChange={e => setAddForm(f => ({ ...f, desc: e.target.value }))} placeholder="Any extra detail…" />
+      </div>
+      <div className="col-span-full"><Btn type="submit">Add task</Btn></div>
+    </>
+  );
+
   return (
     <div>
-      <div className="bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--accent)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-5">
+      {/* Desktop add-task card */}
+      <div className="hidden md:block bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--accent)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-5">
         <h2 className="text-sm font-bold text-[var(--accent)] mb-3">＋ Add a task</h2>
         <form onSubmit={submitAdd} className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
-          <div className="sm:col-span-2">
-            <FieldLabel>Task name</FieldLabel>
-            <Input required value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Fix seller login redirect" />
-          </div>
-          <div>
-            <FieldLabel>Week</FieldLabel>
-            <Select value={addWeek} onChange={e => setAddWeek(e.target.value)}>
-              {weeks.map(w => <option key={w.id} value={w.id}>{w.label} · {weekRange(w)}</option>)}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Type</FieldLabel>
-            <Select value={addForm.cat} onChange={e => setAddForm(f => ({ ...f, cat: e.target.value }))}>
-              <option>Function Task</option><option>UI Issue</option><option>Bug</option>
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Priority</FieldLabel>
-            <Select value={addForm.priority} onChange={e => setAddForm(f => ({ ...f, priority: e.target.value }))}>
-              <option>High</option><option>Medium</option><option>Low</option>
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Assigned to</FieldLabel>
-            <Select value={addForm.whoUid} onChange={e => setAddForm(f => ({ ...f, whoUid: e.target.value }))}>
-              <option value="">Unassigned</option>
-              {members.map(m => <option key={m.uid} value={m.uid}>{m.name}</option>)}
-            </Select>
-          </div>
-          <div className="col-span-full">
-            <FieldLabel>Description (optional)</FieldLabel>
-            <Textarea rows={1} value={addForm.desc} onChange={e => setAddForm(f => ({ ...f, desc: e.target.value }))} placeholder="Any extra detail…" />
-          </div>
-          <div className="col-span-full"><Btn type="submit">Add task</Btn></div>
+          {addFormFields}
         </form>
-        {members.length === 0 && <p className="text-xs text-[var(--muted)] mt-2">No one is assigned to this project yet — add people to it from Admin Panel → Users to enable task assignment and email notifications.</p>}
+        {members.length === 0 && <p className="text-xs text-[var(--muted)] mt-2">No one is assigned to this project yet — add people to it from Admin Panel → Users to enable task assignment and notifications.</p>}
       </div>
+
+      {/* Mobile floating add button + slide-up sheet */}
+      <button
+        onClick={() => setMobileSheetOpen(true)}
+        className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[var(--accent)] text-white text-2xl font-bold shadow-[var(--shadow-md)] flex items-center justify-center"
+        aria-label="Add task"
+      >＋</button>
+      {mobileSheetOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileSheetOpen(false)} />
+          <div className="anim-sheet-up relative w-full bg-[var(--panel)] rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto">
+            <div className="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mb-3" />
+            <h2 className="text-sm font-bold text-[var(--accent)] mb-3">＋ Add a task</h2>
+            <form onSubmit={submitAdd} className="grid grid-cols-2 gap-2.5">
+              {addFormFields}
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 items-center mb-3.5">
         <Select className="!w-auto flex-1 min-w-[100px]" value={fCat} onChange={e => setFCat(e.target.value)}>
@@ -124,6 +163,10 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
         </Select>
         <Input className="flex-[2] min-w-[80px]" placeholder="Search…" value={q} onChange={e => setQ(e.target.value)} />
         <Btn variant="secondary" onClick={jumpToNow}>This week</Btn>
+        <label className="inline-flex items-center gap-1.5 text-xs bg-[var(--grey-soft)] px-2.5 py-1.5 rounded-full cursor-pointer whitespace-nowrap">
+          <input type="checkbox" checked={showEmpty} onChange={e => setShowEmpty(e.target.checked)} />
+          Show empty weeks
+        </label>
       </div>
       <Hint>Tap a status badge to cycle it. Tap ✎ to rename a week or change its dates.</Hint>
 
@@ -132,6 +175,7 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
           const all = tasks.filter(t => t.week === w.id);
           const rows = all.filter(t => (!fCat || t.cat === fCat) && (!fStatus || t.status === fStatus) && (!fWho || t.whoUid === fWho) && (!q || (t.name + " " + (t.desc || "")).toLowerCase().includes(q.toLowerCase())));
           if (filtering && !rows.length && !all.length) return null;
+          if (!filtering && !showEmpty && all.length === 0) return null;
           const done = all.filter(t => t.status === "Completed").length;
           const isNow = w.id === nowId;
           const isOpen = filtering ? rows.length > 0 : openWeeks.has(w.id);
@@ -144,7 +188,7 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
               onSaveWeek={(label, start, end) => saveWeekEdit(w.id, label, start, end)}
               onCycleStatus={cycleStatus} onDeleteTask={deleteTask} onSaveTask={saveTaskEdit}
               showDev={showDev} weeks={weeks} members={members}
-              onQuickAdd={() => { setAddWeek(w.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              onQuickAdd={() => { setAddWeek(w.id); setMobileSheetOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             />
           );
         })}
@@ -158,20 +202,26 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
   const [label, setLabel] = useState(w.label);
   const [start, setStart] = useState(serialToISO(w.start));
   const [end, setEnd] = useState(serialToISO(w.end));
+  const pct = all.length ? Math.round((done / all.length) * 100) : 0;
 
   return (
     <div data-week={w.id} className={`bg-[var(--panel)] border rounded-2xl overflow-hidden shadow-[var(--shadow-sm)] ${isNow ? "border-2 border-[var(--accent)]" : "border-[var(--line)]"}`}>
-      <div className={`flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer select-none ${isNow ? "bg-[var(--accent-soft)]" : "bg-[var(--panel-2)]"}`} onClick={onToggleOpen}>
+      <div className={`relative flex items-center gap-2.5 px-3.5 py-2.5 cursor-pointer select-none ${isNow ? "bg-[var(--accent-soft)]" : "bg-[var(--panel-2)]"}`} onClick={onToggleOpen}>
         <span className={`text-[11px] text-[var(--muted)] transition-transform ${isOpen ? "rotate-90" : ""}`}>▶</span>
         <h3 className="text-sm font-bold">{w.label}</h3>
         <span className="text-[11.5px] text-[var(--muted)] flex-1 min-w-0 truncate">{weekRange(w)}</span>
         {isNow && <span className="bg-[var(--accent)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">NOW</span>}
         {showProg && <span className="text-[11.5px] text-[var(--muted)] tabular-nums">{done}/{all.length}</span>}
         <button onClick={e => { e.stopPropagation(); setEditingWeekId(isEditingW ? null : w.id); }} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] text-xs rounded-md px-1.5 py-1">✎</button>
+        {showProg && all.length > 0 && (
+          <div className="absolute left-0 right-0 bottom-0 h-[3px] bg-[var(--line)]">
+            <div className="h-full bg-[var(--green)] transition-all" style={{ width: pct + "%" }} />
+          </div>
+        )}
       </div>
 
       {isEditingW && (
-        <div className="bg-[var(--accent-soft)] border-t border-[var(--line)] p-3 flex flex-wrap gap-2 items-end">
+        <div className="anim-slide-down bg-[var(--accent-soft)] border-t border-[var(--line)] p-3 flex flex-wrap gap-2 items-end">
           <div><FieldLabel>Label</FieldLabel><Input value={label} onChange={e => setLabel(e.target.value)} className="max-w-[140px]" /></div>
           <div><FieldLabel>Start date</FieldLabel><Input type="date" value={start} onChange={e => setStart(e.target.value)} className="max-w-[150px]" /></div>
           <div><FieldLabel>End date</FieldLabel><Input type="date" value={end} onChange={e => setEnd(e.target.value)} className="max-w-[150px]" /></div>
@@ -182,8 +232,8 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
         </div>
       )}
 
-      {isOpen && (
-        <div>
+      <div className={`collapse-rows ${isOpen ? "open" : ""}`}>
+        <div className="collapse-inner">
           {!rows.length ? (
             <EmptyState>{all.length ? "No tasks match filters." : "No tasks yet."}</EmptyState>
           ) : (
@@ -224,7 +274,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
           )}
           <button onClick={onQuickAdd} className="block w-full text-left text-[var(--green)] font-semibold text-sm px-3.5 py-2.5 hover:bg-[var(--panel-2)]">＋ Add task to {w.label}</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -232,7 +282,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
 function TaskEditPanel({ t, weeks, members, onSave, onCancel, onDelete }) {
   const [f, setF] = useState({ name: t.name, desc: t.desc || "", cat: t.cat, priority: t.priority, status: t.status, whoUid: t.whoUid || "", week: t.week });
   return (
-    <div className="bg-[var(--accent-soft)] p-3 grid gap-2" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
+    <div className="anim-slide-down bg-[var(--accent-soft)] p-3 grid gap-2" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
       <div className="col-span-full"><FieldLabel>Task name</FieldLabel><Input value={f.name} onChange={e => setF(v => ({ ...v, name: e.target.value }))} /></div>
       <div className="col-span-full"><FieldLabel>Description</FieldLabel><Textarea rows={2} value={f.desc} onChange={e => setF(v => ({ ...v, desc: e.target.value }))} /></div>
       <div><FieldLabel>Type</FieldLabel><Select value={f.cat} onChange={e => setF(v => ({ ...v, cat: e.target.value }))}><option>Function Task</option><option>UI Issue</option><option>Bug</option></Select></div>
@@ -255,9 +305,10 @@ function TaskEditPanel({ t, weeks, members, onSave, onCancel, onDelete }) {
 }
 
 function TaskRow({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, onDelete, onSave, onCancel }) {
+  const done = t.status === "Completed";
   return (
     <>
-      <tr className={editing ? "bg-[var(--accent-soft)]" : ""}>
+      <tr className={`${editing ? "bg-[var(--accent-soft)]" : ""} ${done ? "opacity-60" : ""}`} style={{ boxShadow: `inset 3px 0 0 0 ${prBorderColor(t.priority)}` }}>
         <td className="px-3 py-2.5 border-t border-[var(--line)] align-top"><Badge tone={catTone(t.cat)}>{catShort(t.cat)}</Badge></td>
         <td className="px-3 py-2.5 border-t border-[var(--line)] align-top">
           <div>{t.name}</div>
@@ -277,8 +328,9 @@ function TaskRow({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, o
 }
 
 function TaskCard({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, onDelete, onSave, onCancel }) {
+  const done = t.status === "Completed";
   return (
-    <div className="p-3.5">
+    <div className={`p-3.5 ${done ? "opacity-60" : ""}`} style={{ boxShadow: `inset 3px 0 0 0 ${prBorderColor(t.priority)}` }}>
       <div className="flex gap-1.5 flex-wrap items-center mb-1.5">
         <Badge tone={catTone(t.cat)}>{catShort(t.cat)}</Badge>
         <Badge tone={prTone(t.priority)}>{t.priority}</Badge>
@@ -287,10 +339,10 @@ function TaskCard({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, 
       <div className="text-[13.5px] font-medium mb-0.5">{t.name}</div>
       {t.desc && <div className="text-xs text-[var(--muted)] mb-2">{t.desc}</div>}
       <div className="flex gap-1.5 flex-wrap items-center">
-        <Badge tone={stTone(t.status)} onClick={onCycleStatus}>{t.status}</Badge>
+        <Badge tone={stTone(t.status)} onClick={onCycleStatus} className="!px-3.5 !py-2 text-[12px]">{t.status}</Badge>
         <div className="ml-auto flex gap-1 items-center">
-          <button onClick={onEdit} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] rounded-md px-2 py-1.5 text-xs font-semibold">✎</button>
-          <button onClick={onDelete} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2 py-1.5 text-base leading-none">×</button>
+          <button onClick={onEdit} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] rounded-md px-2.5 py-2 text-sm font-semibold">✎</button>
+          <button onClick={onDelete} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2.5 py-2 text-lg leading-none">×</button>
         </div>
       </div>
       {editing && <div className="mt-3"><TaskEditPanel t={t} weeks={weeks} members={members} onSave={onSave} onCancel={onCancel} onDelete={onDelete} /></div>}

@@ -1,17 +1,38 @@
+import { useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase.js";
 import { Btn, EmptyState } from "../components/ui.jsx";
 import { useAppState } from "../hooks/useAppState.jsx";
 import { useNotifications } from "../hooks/useNotifications.js";
+import { useProjectSummaries } from "../hooks/useProjectSummaries.js";
 import NotificationBell from "../components/NotificationBell.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
+
+function timeAgo(ts) {
+  if (!ts) return "no activity yet";
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return "updated just now";
+  if (s < 3600) return `updated ${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `updated ${Math.floor(s / 3600)}h ago`;
+  return `updated ${Math.floor(s / 86400)}d ago`;
+}
 
 export default function ProjectPicker({ onOpenProject, onOpenAdmin }) {
-  const { profile, isUnrestricted, projects, visibleProjects, signOut } = useAppState();
+  const { profile, isUnrestricted, projects, visibleProjects, signOut, refreshProjects } = useAppState();
   const { items, unreadCount, markRead } = useNotifications(profile.uid);
+  const summaries = useProjectSummaries(visibleProjects.map(p => p.id));
+  const [confirming, setConfirming] = useState(null);
   const unread = items.filter(n => !n.read);
 
   function openFromNotification(n) {
     markRead(n.id);
     const p = projects.find(x => x.id === n.projectId);
     if (p) onOpenProject(p);
+  }
+  async function archive(id) {
+    await updateDoc(doc(db, "projects", id), { archived: true });
+    setConfirming(null);
+    await refreshProjects();
   }
 
   return (
@@ -45,22 +66,52 @@ export default function ProjectPicker({ onOpenProject, onOpenAdmin }) {
       {visibleProjects.length === 0 ? (
         <EmptyState>No projects assigned to you yet — ask your admin.</EmptyState>
       ) : (
-        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
-          {visibleProjects.map((p, i) => (
-            <button
-              key={p.id}
-              onClick={() => onOpenProject(p)}
-              className="group text-left bg-[var(--panel)] border border-[var(--line)] rounded-2xl p-5 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:border-[var(--accent)] hover:-translate-y-0.5 transition-all"
-            >
-              <div className="w-9 h-9 rounded-lg mb-3 flex items-center justify-center font-display font-bold text-white"
-                style={{ background: ["var(--accent)", "var(--purple)", "var(--blue)", "var(--green)"][i % 4] }}>
-                {p.name.slice(0, 1).toUpperCase()}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visibleProjects.map((p, i) => {
+            const s = summaries[p.id];
+            return (
+              <div
+                key={p.id}
+                className="group relative text-left bg-[var(--panel)] border border-[var(--line)] rounded-2xl p-5 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:border-[var(--accent)] hover:-translate-y-0.5 transition-all cursor-pointer"
+                onClick={() => onOpenProject(p)}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center font-display font-bold text-white"
+                    style={{ background: ["var(--accent)", "var(--purple)", "var(--blue)", "var(--green)"][i % 4] }}>
+                    {p.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <span className={`w-2.5 h-2.5 rounded-full mt-1 ${s?.hasRecentActivity ? "bg-[var(--green)]" : "bg-[var(--grey-soft)]"}`} title={s?.hasRecentActivity ? "Active this week" : "No recent activity"} />
+                </div>
+                <h3 className="font-semibold text-[15.5px] mb-1">{p.name}</h3>
+                <div className="text-xs text-[var(--muted)] mb-1">
+                  {s ? `${s.openTaskCount} open task${s.openTaskCount === 1 ? "" : "s"} · ${s.milestoneCount} milestone${s.milestoneCount === 1 ? "" : "s"}` : "Loading…"}
+                </div>
+                <div className="text-[11px] text-[var(--muted)] mb-2">{s ? timeAgo(s.updatedAt) : ""}</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">Open project →</span>
+                  {isUnrestricted && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirming(p.id); }}
+                      className="text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--red)] hover:bg-[var(--red-soft)] px-2 py-1 rounded-md"
+                    >
+                      Archive
+                    </button>
+                  )}
+                </div>
               </div>
-              <h3 className="font-semibold text-[15.5px] mb-1">{p.name}</h3>
-              <span className="text-xs text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">Open project →</span>
-            </button>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {confirming && (
+        <ConfirmModal
+          title="Archive this project?"
+          body="It will be hidden from the picker for everyone."
+          confirmLabel="Archive"
+          onConfirm={() => archive(confirming)}
+          onCancel={() => setConfirming(null)}
+        />
       )}
     </div>
   );

@@ -57,7 +57,7 @@ export function useProjectData(projectId) {
         if (!projectId) return;
         try {
           isSavingRef.current = true;
-          await setDoc(doc(db, "projects", projectId, "data", "main"), next);
+          await setDoc(doc(db, "projects", projectId, "data", "main"), { ...next, updatedAt: Date.now() });
           setStatus("synced");
         } catch (e) {
           console.error("Save error:", e.message);
