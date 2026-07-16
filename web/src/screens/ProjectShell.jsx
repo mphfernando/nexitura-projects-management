@@ -25,7 +25,7 @@ const NAV_ICONS = {
 // Renders one open project: its own header, its 5 working tabs, nothing else.
 // Admin Panel lives entirely outside this component (see AdminShell.jsx) —
 // it is a separate top-level area, not one more tab bolted onto a project.
-export default function ProjectShell({ project, onBackToProjects, onOpenAdmin }) {
+export default function ProjectShell({ project, initialTab, onBackToProjects, onOpenAdmin, onNavigate }) {
   const { profile, isUnrestricted, permDefault, signOut } = useAppState();
   const projectId = project.id;
   const { data, update, status } = useProjectData(projectId);
@@ -38,11 +38,12 @@ export default function ProjectShell({ project, onBackToProjects, onOpenAdmin })
 
   const visibleTabs = useMemo(() => TAB_KEYS.filter(t => canSeeTab(profile.role, activePerms, t)), [profile.role, activePerms]);
 
-  const [activeTab, setActiveTab] = useState(visibleTabs[0] || "overview");
+  const [activeTab, setActiveTab] = useState((initialTab && visibleTabs.includes(initialTab)) ? initialTab : (visibleTabs[0] || "overview"));
   useEffect(() => {
+    if (initialTab && visibleTabs.includes(initialTab)) { setActiveTab(initialTab); return; }
     if (!visibleTabs.includes(activeTab)) setActiveTab(visibleTabs[0] || "overview");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, initialTab]);
 
   const fieldOK = key => canSeeField(profile.role, activePerms, key);
   const statusLabel = { connecting: "🔄 Connecting…", synced: "🟢 Synced", saving: "Saving…", error: "⚠ Sync error" }[status];
@@ -61,7 +62,7 @@ export default function ProjectShell({ project, onBackToProjects, onOpenAdmin })
           {profile.name || profile.email}
           <span className="opacity-60 uppercase text-[10px] font-bold">{profile.role}</span>
         </span>
-        <NotificationBell />
+        <NotificationBell onSelectProject={(pid, type) => onNavigate(pid, type === "bug" ? "bugs" : "tracker")} />
         {isUnrestricted && <button onClick={onOpenAdmin} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">Admin Panel</button>}
         <button onClick={onBackToProjects} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">← Projects</button>
         <button onClick={signOut} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">Sign out</button>

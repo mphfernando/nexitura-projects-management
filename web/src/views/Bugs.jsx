@@ -3,6 +3,7 @@ import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from "f
 import { db } from "../firebase.js";
 import { submitBugReport } from "../lib/bugs.js";
 import { logActivity } from "../lib/activity.js";
+import { notifyAssignment } from "../lib/notify.js";
 import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Select, Textarea, FieldLabel, Card, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
@@ -101,6 +102,10 @@ export default function Bugs({ project, data, update }) {
     }));
     await updateDoc(doc(db, "projects", project.id, "bugReports", report.id), { status: "added", taskId });
     logActivity(project.id, profile, "task added", `${report.title} (from bug report)`);
+    if (member) {
+      const week = data.weeks.find(w => w.id === weekId);
+      notifyAssignment({ toUid: member.uid, projectId: project.id, projectName: project.name, taskName: report.title, weekLabel: week ? week.label : "" });
+    }
     setAddingId(null);
   }
 
@@ -108,15 +113,17 @@ export default function Bugs({ project, data, update }) {
 
   return (
     <div>
-      <div className="bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--red)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-4.5">
-        <h2 className="text-sm font-bold text-[var(--red)] mb-1.5">🐞 Report a bug</h2>
-        <Hint>Describe what went wrong — this notifies the Super Admin right away.</Hint>
-        <form onSubmit={submit} className="space-y-2.5">
-          <div><FieldLabel>Title</FieldLabel><Input required value={f.title} onChange={e => setF(v => ({ ...v, title: e.target.value }))} placeholder="e.g. Checkout button does nothing on mobile" /></div>
-          <div><FieldLabel>Description (optional)</FieldLabel><Textarea rows={3} value={f.description} onChange={e => setF(v => ({ ...v, description: e.target.value }))} placeholder="Steps to reproduce, what you expected, what happened…" /></div>
-          <Btn type="submit" variant="danger" disabled={busy}>{busy ? "Submitting…" : "Submit bug report"}</Btn>
-        </form>
-      </div>
+      {!isSuperAdmin && (
+        <div className="bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--red)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-4.5">
+          <h2 className="text-sm font-bold text-[var(--red)] mb-1.5">🐞 Report a bug</h2>
+          <Hint>Describe what went wrong — this notifies the Super Admin right away.</Hint>
+          <form onSubmit={submit} className="space-y-2.5">
+            <div><FieldLabel>Title</FieldLabel><Input required value={f.title} onChange={e => setF(v => ({ ...v, title: e.target.value }))} placeholder="e.g. Checkout button does nothing on mobile" /></div>
+            <div><FieldLabel>Description (optional)</FieldLabel><Textarea rows={3} value={f.description} onChange={e => setF(v => ({ ...v, description: e.target.value }))} placeholder="Steps to reproduce, what you expected, what happened…" /></div>
+            <Btn type="submit" variant="danger" disabled={busy}>{busy ? "Submitting…" : "Submit bug report"}</Btn>
+          </form>
+        </div>
+      )}
 
       {!isSuperAdmin && !isClient ? (
         <Card><EmptyState>Only the Super Admin reviews bug reports.</EmptyState></Card>

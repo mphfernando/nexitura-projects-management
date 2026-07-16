@@ -17,8 +17,8 @@ function timeAgo(ts) {
   return `updated ${Math.floor(s / 86400)}d ago`;
 }
 
-export default function ProjectPicker({ onOpenProject, onOpenAdmin }) {
-  const { profile, isUnrestricted, projects, visibleProjects, signOut, refreshProjects } = useAppState();
+export default function ProjectPicker({ onOpenProject, onOpenAdmin, onNavigate }) {
+  const { profile, isUnrestricted, visibleProjects, signOut, refreshProjects } = useAppState();
   const { items, unreadCount, markRead } = useNotifications(profile.uid);
   const summaries = useProjectSummaries(visibleProjects.map(p => p.id));
   const [confirming, setConfirming] = useState(null);
@@ -26,8 +26,7 @@ export default function ProjectPicker({ onOpenProject, onOpenAdmin }) {
 
   function openFromNotification(n) {
     markRead(n.id);
-    const p = projects.find(x => x.id === n.projectId);
-    if (p) onOpenProject(p);
+    onNavigate(n.projectId, n.type === "bug" ? "bugs" : "tracker");
   }
   async function archive(id) {
     await updateDoc(doc(db, "projects", id), { archived: true });
@@ -46,7 +45,7 @@ export default function ProjectPicker({ onOpenProject, onOpenAdmin }) {
           </div>
         </div>
         <div className="flex gap-2 items-center">
-          <NotificationBell dark={false} onSelectProject={pid => { const p = projects.find(x => x.id === pid); if (p) onOpenProject(p); }} />
+          <NotificationBell dark={false} onSelectProject={(pid, type) => onNavigate(pid, type === "bug" ? "bugs" : "tracker")} />
           {isUnrestricted && <Btn variant="secondary" onClick={onOpenAdmin}>Admin Panel</Btn>}
           <Btn variant="secondary" onClick={signOut}>Sign out</Btn>
         </div>

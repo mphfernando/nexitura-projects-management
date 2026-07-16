@@ -50,7 +50,7 @@ export default function NotificationBell({ onSelectProject, dark = true }) {
             ) : items.map(n => (
               <button
                 key={n.id}
-                onClick={() => { markRead(n.id); if (onSelectProject) onSelectProject(n.projectId); }}
+                onClick={() => { markRead(n.id); if (onSelectProject) onSelectProject(n.projectId, n.type); setOpen(false); }}
                 className={`w-full text-left px-4 py-3 border-b border-[var(--line)] last:border-none hover:bg-[var(--panel-2)] transition-colors ${!n.read ? "bg-[var(--accent-soft)]" : ""}`}
               >
                 <div className="text-sm">
