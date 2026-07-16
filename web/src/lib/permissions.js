@@ -6,7 +6,7 @@ export const GOVERNED_ROLES = ["developer", "client"];
 
 export function defaultPermBucket(role) {
   return {
-    tabs: { tracker: true, reqs: true, plan: true, milestones: role !== "client", overview: true, activity: false, bugs: role === "client" },
+    tabs: { tracker: true, reqs: true, plan: true, milestones: role !== "client", overview: true, activity: false, bugs: true },
     fields: { developerNames: role !== "client", progress: true, addTask: role !== "client" },
   };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { submitBugReport } from "../lib/bugs.js";
 import { logActivity } from "../lib/activity.js";
@@ -66,19 +66,17 @@ export default function Bugs({ project, data, update }) {
   const [addingId, setAddingId] = useState(null);
 
   const isSuperAdmin = profile.role === "superadmin";
-  const isClient = profile.role === "client";
 
   useEffect(() => {
-    const base = collection(db, "projects", project.id, "bugReports");
-    const q = isSuperAdmin
-      ? query(base, orderBy("createdAt", "desc"))
-      : query(base, where("reportedByUid", "==", profile.uid), orderBy("createdAt", "desc"));
+    // Everyone who can see this tab sees every report in the project —
+    // only Super Admin gets the "Add to Tracker" triage action.
+    const q = query(collection(db, "projects", project.id, "bugReports"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, snap => setReports(snap.docs.map(d => ({ id: d.id, ...d.data() }))), e => {
       console.error("Bug reports listener error:", e.message);
       setReports([]);
     });
     return unsub;
-  }, [project.id, isSuperAdmin, profile.uid]);
+  }, [project.id]);
 
   async function submit(e) {
     e.preventDefault();
@@ -125,46 +123,42 @@ export default function Bugs({ project, data, update }) {
         </div>
       )}
 
-      {!isSuperAdmin && !isClient ? (
-        <Card><EmptyState>Only the Super Admin reviews bug reports.</EmptyState></Card>
-      ) : (
-        <Card>
-          <h2 className="font-bold text-[15px] mb-1">{isSuperAdmin ? "Reported bugs" : "Your submitted bugs"}</h2>
-          <Hint>{isSuperAdmin ? "Add a report straight to the Weekly Tracker, with a week and developer assigned. It'll show Completed here once that task is done." : "Only the Super Admin can see and triage the full list."}</Hint>
-          {reports === null ? (
-            <EmptyState>Loading…</EmptyState>
-          ) : reports.length === 0 ? (
-            <EmptyState>No bugs reported yet.</EmptyState>
-          ) : (
-            <div className="divide-y divide-dashed divide-[var(--line)]">
-              {reports.map(r => {
-                const st = reportStatus(r, data.tasks);
-                const badge = statusBadge[st];
-                return (
-                  <div key={r.id} className="py-3 first:pt-0">
-                    <div className="flex flex-wrap gap-2.5 items-start">
-                      <div className="flex-1 min-w-[180px]">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-semibold">{r.title}</h3>
-                          <Badge tone={badge.tone}>{badge.label}</Badge>
-                        </div>
-                        {r.description && <p className="text-xs text-[var(--muted)] mt-1">{r.description}</p>}
-                        <p className="text-[11px] text-[var(--muted)] mt-1">Reported by {r.reportedBy} · {timeAgo(r.createdAt)}</p>
+      <Card>
+        <h2 className="font-bold text-[15px] mb-1">Reported bugs</h2>
+        <Hint>{isSuperAdmin ? "Add a report straight to the Weekly Tracker, with a week and developer assigned. It'll show Completed here once that task is done." : "Everyone with access to this project can see reports here — only the Super Admin triages them."}</Hint>
+        {reports === null ? (
+          <EmptyState>Loading…</EmptyState>
+        ) : reports.length === 0 ? (
+          <EmptyState>No bugs reported yet.</EmptyState>
+        ) : (
+          <div className="divide-y divide-dashed divide-[var(--line)]">
+            {reports.map(r => {
+              const st = reportStatus(r, data.tasks);
+              const badge = statusBadge[st];
+              return (
+                <div key={r.id} className="py-3 first:pt-0">
+                  <div className="flex flex-wrap gap-2.5 items-start">
+                    <div className="flex-1 min-w-[180px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-semibold">{r.title}</h3>
+                        <Badge tone={badge.tone}>{badge.label}</Badge>
                       </div>
-                      {isSuperAdmin && st === "new" && (
-                        <Btn variant="secondary" onClick={() => setAddingId(addingId === r.id ? null : r.id)}>Add to Tracker</Btn>
-                      )}
+                      {r.description && <p className="text-xs text-[var(--muted)] mt-1">{r.description}</p>}
+                      <p className="text-[11px] text-[var(--muted)] mt-1">Reported by {r.reportedBy} · {timeAgo(r.createdAt)}</p>
                     </div>
-                    {isSuperAdmin && addingId === r.id && (
-                      <AddToTrackerForm project={project} weeks={data.weeks} onDone={(weekId, member) => addToTracker(r, weekId, member)} />
+                    {isSuperAdmin && st === "new" && (
+                      <Btn variant="secondary" onClick={() => setAddingId(addingId === r.id ? null : r.id)}>Add to Tracker</Btn>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      )}
+                  {isSuperAdmin && addingId === r.id && (
+                    <AddToTrackerForm project={project} weeks={data.weeks} onDone={(weekId, member) => addToTracker(r, weekId, member)} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
