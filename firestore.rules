@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function myRole() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? myProfile().role : null;
+    }
+    function isSuperAdmin() { return myRole() == 'superadmin'; }
+    function isAdmin()      { return myRole() == 'admin' || isSuperAdmin(); }
+    function hasProjectAccess(projectId) {
+      return isAdmin() || (signedIn() && projectId in myProfile().projects);
+    }
+
+    // Legacy pre-auth data (aleken-hub/v3, aleken-hub/ping) — read-only, used once by the
+    // automatic migration that copies it into projects/aleken-legacy/data/main.
+    match /aleken-hub/{docId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Each user can read only their own profile; only Super Admin manages the collection.
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
+      allow list: if isSuperAdmin();
+      allow write: if isSuperAdmin();
+    }
+
+    // Project registry: any signed-in user can read (picker needs to know names),
+    // only Admin/Super Admin can create/rename/archive.
+    match /projects/{projectId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+
+      match /data/main {
+        allow read: if hasProjectAccess(projectId);
+        allow write: if hasProjectAccess(projectId);
+      }
+    }
+
+    // Global default permission matrix — only Super Admin edits it.
+    match /permissions/matrix {
+      allow read: if signedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // Per-project permission overrides — only Super Admin edits them.
+    match /projectPermOverrides/{projectId} {
+      allow read: if signedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // In-app notifications (e.g. "you were assigned to X"). Any signed-in
+    // user can create one for someone else; each user can only read/mark
+    // read their own.
+    match /notifications/{id} {
+      allow create: if signedIn();
+      allow read, update: if signedIn() && resource.data.toUid == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}

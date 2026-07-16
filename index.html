@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Nexitura Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+:root{
+  --bg:#F6F5F1; --panel:#FFFFFF; --ink:#1C2321; --muted:#6B7370; --line:#E4E2DA;
+  --green:#1B7A5A; --green-soft:#E3F0EA; --amber:#B7791F; --amber-soft:#FCF0DC;
+  --grey-soft:#EDEDE9; --red:#B4513E; --red-soft:#F7E6E1; --blue:#2B5D8A; --blue-soft:#E4EDF5;
+  --radius:12px; --nav-h:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 'Inter',system-ui,sans-serif;padding-bottom:calc(var(--nav-h) + 16px)}
+h1,h2,h3,h4,.brand,.tab,.bottom-tab,button,.metric b{font-family:'Space Grotesk',sans-serif}
+
+/* ---- Header ---- */
+header{background:var(--ink);color:#F6F5F1;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px}
+.brand{font-size:20px;font-weight:700;letter-spacing:.5px}
+.brand span{color:#7BC9A6}
+header small{color:#9BA5A0;font-size:12px}
+.saved-note{margin-left:auto;font-size:11px;color:#9BA5A0;white-space:nowrap}
+
+/* ---- Top nav (desktop) ---- */
+.top-nav{display:flex;gap:4px;padding:8px 18px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;overflow-x:auto}
+.tab{border:1px solid transparent;background:none;color:var(--muted);font-size:13.5px;font-weight:600;padding:7px 14px;border-radius:99px;cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab.active{background:var(--ink);color:#fff}
+
+/* ---- Bottom nav (mobile) ---- */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);z-index:30;height:var(--nav-h)}
+.bottom-nav-inner{display:flex;height:100%}
+.bottom-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;color:var(--muted);font-size:9.5px;font-weight:600;cursor:pointer;padding:0;letter-spacing:.3px;text-transform:uppercase}
+.bottom-tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bottom-tab.active{color:var(--green)}
+.bottom-tab.active svg{stroke:var(--green)}
+
+/* ---- Main ---- */
+main{max-width:1180px;margin:0 auto;padding:16px}
+.view{display:none}.view.active{display:block}
+
+/* ---- Badges ---- */
+.badge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-done{background:var(--green-soft);color:var(--green)}
+.b-prog{background:var(--amber-soft);color:var(--amber)}
+.b-not{background:var(--grey-soft);color:var(--muted)}
+.b-high{background:var(--red-soft);color:var(--red)}
+.b-med{background:var(--blue-soft);color:var(--blue)}
+.b-low{background:var(--grey-soft);color:var(--muted)}
+.b-bug{background:var(--red-soft);color:var(--red)}
+.b-ui{background:var(--blue-soft);color:var(--blue)}
+.b-func{background:var(--green-soft);color:var(--green)}
+.b-ver{background:#EEE9F6;color:#7A4E9E}
+
+/* ---- Forms ---- */
+.add-card{background:var(--panel);border:2px solid var(--green);border-radius:var(--radius);padding:14px;margin-bottom:18px}
+.add-card h2{font-size:14px;margin-bottom:10px;color:var(--green)}
+.form-grid{display:grid;gap:8px}
+.form-grid.g2{grid-template-columns:1fr 1fr}
+.form-grid.g3{grid-template-columns:1fr 1fr 1fr}
+.form-grid.g4{grid-template-columns:2fr 1fr 1fr 1fr}
+.form-grid.g5{grid-template-columns:2fr 1fr 1fr 1fr 1fr}
+.full{grid-column:1/-1}
+select,input[type=text],input[type=date],input[type=number],textarea{border:1px solid var(--line);border-radius:8px;padding:10px 11px;font:14px 'Inter';background:#fff;color:var(--ink);width:100%;-webkit-appearance:none}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--green);outline-offset:1px}
+.btn{border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;background:var(--green);color:#fff;white-space:nowrap;touch-action:manipulation;min-height:42px}
+.btn.secondary{background:var(--grey-soft);color:var(--ink)}
+.btn.danger{background:var(--red);color:#fff}
+.field-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}
+.toolbar select,.toolbar input{width:auto;flex:1;min-width:100px}
+.hint{font-size:12px;color:var(--muted);margin:2px 0 12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px}
+.card h2{font-size:15px;margin-bottom:12px}
+
+/* ---- Weeks ---- */
+.week-block{margin-bottom:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.week-block.current{border:2px solid var(--green)}
+.week-head{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;user-select:none;background:#FBFAF7;-webkit-tap-highlight-color:transparent}
+.week-block.current .week-head{background:var(--green-soft)}
+.week-head h3{font-size:14px;flex:none}
+.week-head .range{font-size:11.5px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.week-head .count{font-size:11.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex:none}
+.week-head .chev{font-size:11px;color:var(--muted);transition:transform .2s;flex:none}
+.week-block.open .chev{transform:rotate(90deg)}
+.now-tag{background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;letter-spacing:.4px;flex:none}
+.edit-week-btn{border:none;background:none;color:var(--muted);font-size:11px;cursor:pointer;padding:3px 7px;border-radius:6px;flex:none;font-weight:600;font-family:'Space Grotesk'}
+.edit-week-btn:hover{background:var(--grey-soft);color:var(--ink)}
+.week-body{display:none}
+.week-block.open .week-body{display:block}
+
+/* ---- Week edit panel ---- */
+.week-edit-panel{background:#F0F4FF;border-top:1px solid var(--line);padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.week-edit-panel input{max-width:160px}
+.week-edit-panel .actions{display:flex;gap:6px}
+
+/* ---- Desktop table ---- */
+.task-table{width:100%;border-collapse:collapse}
+.task-table th,.task-table td{text-align:left;padding:9px 11px;border-top:1px solid #F0EEE7;font-size:13px;vertical-align:top}
+.task-table th{background:#F7F6F2;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);border-top:1px solid var(--line)}
+.task-table td .tdesc{color:var(--muted);font-size:12px;margin-top:2px}
+.status-btn{cursor:pointer;border:none;background:none;padding:0;-webkit-tap-highlight-color:transparent;min-height:36px;display:flex;align-items:center}
+.del{border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;border-radius:6px;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center}
+.del:hover{background:var(--red-soft);color:var(--red)}
+
+/* ---- Inline task edit ---- */
+.task-edit-panel{background:#F0F4FF;border-top:1px solid var(--line);padding:12px 14px}
+.task-edit-panel .tep-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.task-edit-panel .tep-name{grid-column:1/-1}
+.task-edit-panel .tep-desc{grid-column:1/-1}
+.task-edit-panel .tep-actions{display:flex;gap:6px;margin-top:2px}
+@media(max-width:640px){
+  .task-edit-panel .tep-grid{grid-template-columns:1fr 1fr}
+  .task-edit-panel .tep-name{grid-column:1/-1}
+  .task-edit-panel .tep-desc{grid-column:1/-1}
+}
+.edit-task-btn{border:none;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px;min-height:36px;font-weight:600;font-family:'Space Grotesk'}
+.edit-task-btn:hover{background:var(--grey-soft);color:var(--ink)}
+
+/* ---- Mobile task cards ---- */
+.task-cards{display:none}
+.task-card{border-top:1px solid #F0EEE7;padding:12px 14px}
+.task-card:first-child{border-top:none}
+.task-card .tc-top{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.task-card .tc-name{font-size:13.5px;font-weight:500;margin-bottom:3px}
+.task-card .tc-desc{font-size:12px;color:var(--muted);margin-bottom:8px}
+.task-card .tc-bottom{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.task-card .tc-actions{margin-left:auto;display:flex;gap:4px;align-items:center}
+.tc-who{font-size:11.5px;color:var(--muted)}
+
+.empty{color:var(--muted);font-size:13px;padding:14px}
+.quickadd{border:none;background:none;color:var(--green);font-weight:600;font-size:13px;cursor:pointer;padding:10px 14px;display:block;width:100%;text-align:left}
+
+/* ---- Requirements ---- */
+.doc-sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+.doc-sec>.dhead{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;user-select:none;background:#FBFAF7;font-family:'Space Grotesk';font-weight:600;font-size:14.5px;-webkit-tap-highlight-color:transparent}
+.doc-sec .chev{font-size:11px;color:var(--muted);transition:transform .2s}
+.doc-sec.open .chev{transform:rotate(90deg)}
+.doc-sec>.dbody{display:none;padding:4px 16px 14px}
+.doc-sec.open>.dbody{display:block}
+.screen{border-top:1px dashed var(--line);padding:11px 0}
+.screen:first-child{border-top:none}
+.screen h4{font-size:13px;margin-bottom:5px}
+.screen h4 .scr{color:var(--muted);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;margin-right:7px}
+.screen ul{margin-left:16px}
+.screen li{font-size:13px;margin:3px 0}
+.ver-item{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px dashed var(--line)}
+.ver-item:last-child{border:none}
+.ver-item .vbody{flex:1;min-width:0}
+.ver-item h4{font-size:13.5px}
+.ver-item .vdate{font-size:11.5px;color:var(--muted)}
+.ver-item ul{margin:5px 0 0 16px}
+.ver-item li{font-size:12px;margin:2px 0}
+
+/* ---- Plan ---- */
+.gantt-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.gantt{min-width:860px;position:relative}
+.g-months{display:flex;margin-left:260px;border-bottom:1px solid var(--line);font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.g-months div{border-left:1px solid var(--line);padding:3px 5px;overflow:hidden}
+.g-row{display:flex;align-items:center;height:32px;border-bottom:1px dashed #EFEDE6;cursor:pointer}
+.g-row:hover{background:#FBFAF7}
+.g-row.selected{background:var(--green-soft)}
+.g-label{width:260px;flex:none;font-size:12px;padding-right:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.g-label small{color:var(--muted)}
+.g-track{position:relative;flex:1;height:100%}
+.g-bar{position:absolute;top:7px;height:18px;border-radius:5px;font-size:9.5px;color:#fff;display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap}
+.g-bar .fillpct{position:absolute;inset:0;background:rgba(255,255,255,.35)}
+.g-phase-head{background:#F1EFE9;font-weight:600;font-size:12px;height:28px;display:flex;align-items:center;padding-left:7px;border-radius:5px;margin:8px 0 2px;font-family:'Space Grotesk'}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--red);z-index:5}
+.today-line::after{content:'Today';position:absolute;top:-2px;left:4px;font-size:9.5px;color:var(--red);font-weight:600}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.edit-panel{background:var(--panel);border:2px solid var(--blue);border-radius:var(--radius);padding:14px;margin-bottom:14px;display:none}
+.edit-panel.open{display:block}
+.edit-panel h2{font-size:14px;color:var(--blue);margin-bottom:10px}
+.edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.edit-grid .wide{grid-column:span 2}
+.edit-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* ---- Milestones ---- */
+.mile{display:flex;gap:12px;padding:13px 0;border-bottom:1px dashed var(--line);align-items:flex-start}
+.mile:last-child{border:none}
+.mile .dot{width:13px;height:13px;border-radius:50%;flex:none;margin-top:3px;border:3px solid var(--grey-soft);background:#fff}
+.mile.done .dot{background:var(--green);border-color:var(--green-soft)}
+.mile.prog .dot{background:var(--amber);border-color:var(--amber-soft)}
+.mile h3{font-size:14px}
+.mile p{font-size:12px;color:var(--muted)}
+.mile .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0}
+.mile .when{font-size:11.5px;color:var(--muted);white-space:nowrap}
+
+/* ---- Overview ---- */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.metric b{display:block;font-size:24px;font-weight:700}
+.metric span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+
+/* ---- Responsive ---- */
+@media(max-width:640px){
+  /* switch nav */
+  .top-nav{display:none}
+  .bottom-nav{display:block}
+  body{padding-bottom:calc(var(--nav-h) + 8px)}
+
+  header{padding:12px 14px}
+  header small{display:none}
+  main{padding:10px}
+
+  /* forms */
+  .form-grid.g4,.form-grid.g5{grid-template-columns:1fr 1fr}
+  .form-grid.g3{grid-template-columns:1fr 1fr}
+  .form-grid.g2{grid-template-columns:1fr 1fr}
+  .add-card{padding:12px}
+
+  /* tracker — show cards, hide table */
+  .task-table-wrap{display:none}
+  .task-cards{display:block}
+
+  /* toolbar wraps nicely */
+  .toolbar select,.toolbar input{min-width:0}
+
+  /* milestones */
+  .mile{flex-wrap:wrap}
+  .mile .right{width:100%;justify-content:flex-start;margin-left:0;margin-top:4px}
+
+  /* gantt scroll hint */
+  .gantt-wrap::before{content:'← Scroll to see full chart →';display:block;font-size:11px;color:var(--muted);margin-bottom:8px;text-align:center}
+
+  /* plan edit */
+  .edit-grid{grid-template-columns:1fr 1fr}
+  .edit-grid .wide{grid-column:1/-1}
+}
+@media(min-width:641px){
+  .task-table-wrap{display:block}
+  .task-cards{display:none}
+}
+@media(prefers-reduced-motion:reduce){.chev{transition:none}}
+
+/* ---- Auth / gate screens ---- */
+#authGate,#pickerGate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px;width:100%;max-width:340px}
+.auth-box h1{font-size:19px;margin-bottom:4px}
+.auth-box p.sub{color:var(--muted);font-size:12.5px;margin-bottom:16px}
+.auth-box .field-label{margin-top:8px}
+.auth-box .btn{width:100%;margin-top:14px}
+.auth-err{background:var(--red-soft);color:var(--red);font-size:12.5px;padding:8px 10px;border-radius:8px;margin-top:10px;display:none}
+.auth-err.show{display:block}
+
+/* ---- Project picker ---- */
+.picker-wrap{max-width:820px;margin:0 auto;padding:32px 18px}
+.picker-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
+.picker-head h1{font-size:20px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.proj-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;cursor:pointer;text-align:left}
+.proj-card:hover{border-color:var(--green)}
+.proj-card h3{font-size:15.5px;margin-bottom:4px}
+.proj-card span{color:var(--muted);font-size:12px}
+.role-chip{display:inline-block;background:var(--grey-soft);color:var(--ink);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:99px;margin-left:8px}
+
+/* ---- Admin panel ---- */
+.admin-subtabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.admin-subtab{border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:12.5px;font-weight:600;padding:7px 13px;border-radius:99px;cursor:pointer}
+.admin-subtab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.admin-pane{display:none}
+.admin-pane.active{display:block}
+.perm-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.perm-table th,.perm-table td{padding:8px 10px;border-top:1px solid #F0EEE7;font-size:12.5px;text-align:center}
+.perm-table td:first-child,.perm-table th:first-child{text-align:left}
+.perm-table th{background:#F7F6F2;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.perm-table input[type=checkbox]{width:17px;height:17px}
+.row-flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.row-flex .field-label{margin:0}
+.user-row,.proj-row{display:flex;gap:8px;align-items:center;padding:9px 0;border-top:1px dashed var(--line);flex-wrap:wrap}
+.user-row:first-child,.proj-row:first-child{border-top:none}
+.user-row .u-email{flex:1;min-width:150px;font-size:13px}
+.user-row select{width:auto;min-width:110px}
+.chip-check{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:var(--grey-soft);padding:4px 8px;border-radius:99px}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="authGate">
+  <div class="auth-box">
+    <h1>Nexitura Hub</h1>
+    <p class="sub">Sign in to view your projects.</p>
+    <form id="loginForm">
+      <label class="field-label" for="loginEmail">Email</label>
+      <input type="text" id="loginEmail" autocomplete="username" required>
+      <label class="field-label" for="loginPass">Password</label>
+      <input type="password" id="loginPass" autocomplete="current-password" required>
+      <button class="btn" type="submit">Sign in</button>
+      <div class="auth-err" id="loginErr"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ NO ACCESS ============ -->
+<div id="noAccessGate" style="display:none">
+  <div id="authGate2" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div class="auth-box">
+      <h1>No access yet</h1>
+      <p class="sub">Your account isn't set up in Nexitura Hub yet. Ask your Super Admin to add you.</p>
+      <button class="btn secondary" id="noAccessSignOut" type="button">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PROJECT PICKER ============ -->
+<div id="pickerGate" style="display:none">
+  <div class="picker-wrap">
+    <div class="picker-head">
+      <h1>Projects <span class="role-chip" id="pickerRoleChip"></span></h1>
+      <div style="display:flex;gap:8px">
+        <button class="btn secondary" id="pickerAdminBtn" style="display:none">Admin Panel</button>
+        <button class="btn secondary" id="pickerSignOut">Sign out</button>
+      </div>
+    </div>
+    <div class="proj-grid" id="projGrid"></div>
+  </div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="appShell" style="display:none">
+
+<header>
+  <div class="brand">Nexitura<span>·</span>Hub</div>
+  <small id="headerProjName">Select a project to see its details</small>
+  <span class="saved-note" id="savedNote"></span>
+  <button class="edit-week-btn" id="backToProjects" style="color:#F6F5F1;margin-left:8px">← Projects</button>
+  <button class="edit-week-btn" id="appSignOut" style="color:#F6F5F1">Sign out</button>
+</header>
+
+<!-- Desktop nav -->
+<nav class="top-nav">
+  <button class="tab active" data-v="tracker">Weekly Tracker</button>
+  <button class="tab" data-v="reqs">Requirements</button>
+  <button class="tab" data-v="plan">Project Plan</button>
+  <button class="tab" data-v="milestones">Milestones</button>
+  <button class="tab" data-v="overview">Overview</button>
+  <button class="tab" data-v="admin" id="adminTabBtn" style="display:none">Admin Panel</button>
+</nav>
+
+<!-- Mobile bottom nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bottom-tab active" data-v="tracker">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Tracker
+    </button>
+    <button class="bottom-tab" data-v="reqs">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Reqs
+    </button>
+    <button class="bottom-tab" data-v="plan">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Plan
+    </button>
+    <button class="bottom-tab" data-v="milestones">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Milestones
+    </button>
+    <button class="bottom-tab" data-v="overview">
+      <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>
+      Overview
+    </button>
+    <button class="bottom-tab" data-v="admin" id="adminBottomBtn" style="display:none">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 12 0v2"/></svg>
+      Admin
+    </button>
+  </div>
+</div>
+
+<main>
+
+<!-- ============ WEEKLY TRACKER ============ -->
+<section class="view active" id="v-tracker">
+  <div class="add-card">
+    <h2>＋ Add a task</h2>
+    <form id="addForm" class="form-grid g5">
+      <div class="full" style="grid-column:span 2">
+        <label class="field-label" for="aName">Task name</label>
+        <input type="text" id="aName" placeholder="e.g. Fix seller login redirect" required>
+      </div>
+      <div><label class="field-label" for="aWeek">Week</label><select id="aWeek"></select></div>
+      <div><label class="field-label" for="aCat">Type</label>
+        <select id="aCat"><option>Function Task</option><option>UI Issue</option><option>Bug</option></select></div>
+      <div><label class="field-label" for="aPriority">Priority</label>
+        <select id="aPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+      <div><label class="field-label" for="aWho">Assigned to</label>
+        <input type="text" id="aWho" placeholder="Ranul / Pabashi…" list="peopleList"><datalist id="peopleList"></datalist></div>
+      <div class="full"><label class="field-label" for="aDesc">Description (optional)</label>
+        <textarea id="aDesc" rows="1" placeholder="Any extra detail…"></textarea></div>
+      <div class="full"><button class="btn" type="submit">Add task</button></div>
+    </form>
+  </div>
+
+  <div class="toolbar">
+    <select id="fCat"><option value="">All types</option><option>Function Task</option><option>UI Issue</option><option>Bug</option></select>
+    <select id="fStatus"><option value="">All statuses</option><option>Not Started</option><option>In Progress</option><option>Completed</option></select>
+    <select id="fWho"><option value="">Everyone</option></select>
+    <input type="text" id="fSearch" placeholder="Search…" style="flex:1;min-width:80px">
+    <button class="btn secondary" id="jumpNow" style="white-space:nowrap">This week</button>
+  </div>
+  <p class="hint">Tap a status badge to cycle it. Tap ✎ to rename a week or change its dates.</p>
+  <div id="weeks"></div>
+</section>
+
+<!-- ============ REQUIREMENTS ============ -->
+<section class="view" id="v-reqs">
+  <div class="add-card" style="border-color:#7A4E9E">
+    <h2 style="color:#7A4E9E">＋ Add a requirements version</h2>
+    <form id="verForm" class="form-grid g3">
+      <div><label class="field-label" for="vNum">Version</label><input type="text" id="vNum" placeholder="e.g. 1.2" required></div>
+      <div><label class="field-label" for="vTitle">Title</label><input type="text" id="vTitle" placeholder="e.g. Client feedback round 2" required></div>
+      <div><label class="field-label" for="vDate">Date</label><input type="date" id="vDate"></div>
+      <div class="full"><label class="field-label" for="vChanges">Changes / new requirements (one per line)</label>
+        <textarea id="vChanges" rows="3" placeholder="e.g. Buyer app: add loyalty points screen"></textarea></div>
+      <div class="full"><button class="btn" style="background:#7A4E9E" type="submit">Add version</button></div>
+    </form>
+  </div>
+  <div class="card"><h2>Version history</h2><div id="verList"></div></div>
+  <h2 style="font-size:15px;margin:4px 0 8px">Functional Flow — document content</h2>
+  <p class="hint">Full content of Aleken_Functional_Flow_1_0.docx. Tap a section to expand.</p>
+  <div id="docSections"></div>
+</section>
+
+<!-- ============ PROJECT PLAN ============ -->
+<section class="view" id="v-plan">
+  <div class="toolbar">
+    <button class="btn" id="planAddBtn">＋ Add task</button>
+    <span class="hint" style="margin:0;flex:1">Tap any row to edit. Timeline: 1 Jun – 31 Oct 2026.</span>
+  </div>
+  <div class="edit-panel" id="planEdit">
+    <h2 id="planEditTitle">Edit task</h2>
+    <div class="edit-grid">
+      <div class="wide"><label class="field-label">Task name</label><input type="text" id="pName"></div>
+      <div><label class="field-label">Owner</label><input type="text" id="pOwner"></div>
+      <div><label class="field-label">Phase</label><select id="pPhase"></select></div>
+      <div><label class="field-label">Start date</label><input type="date" id="pStart"></div>
+      <div><label class="field-label">End date</label><input type="date" id="pEnd"></div>
+      <div><label class="field-label">% complete</label><input type="number" id="pPct" min="0" max="100" step="5"></div>
+      <div><label class="field-label">Status</label>
+        <select id="pStatus"><option>Not Started</option><option>In Progress</option><option>Completed</option></select></div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn" id="pSave">Save</button>
+      <button class="btn secondary" id="pCancel">Cancel</button>
+      <button class="btn danger" id="pDelete" style="margin-left:auto">Delete</button>
+    </div>
+  </div>
+  <div class="gantt-wrap"><div class="gantt" id="gantt"></div><div class="legend" id="ganttLegend"></div></div>
+</section>
+
+<!-- ============ MILESTONES ============ -->
+<section class="view" id="v-milestones">
+  <div class="add-card">
+    <h2>＋ Add a milestone</h2>
+    <form id="mileForm" class="form-grid g2">
+      <div><label class="field-label" for="mName">Milestone name</label><input type="text" id="mName" placeholder="e.g. Beta release to client" required></div>
+      <div><label class="field-label" for="mDate">Target date</label><input type="date" id="mDate" required></div>
+      <div class="full"><label class="field-label" for="mNote">Note (optional)</label><input type="text" id="mNote" placeholder="What does this milestone mean?"></div>
+      <div class="full"><button class="btn" type="submit">Add milestone</button></div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Milestones</h2>
+    <p class="hint">Tap a status badge to cycle it. Sorted by date.</p>
+    <div id="mileList"></div>
+  </div>
+</section>
+
+<!-- ============ OVERVIEW ============ -->
+<section class="view" id="v-overview">
+  <div class="metrics" id="metrics"></div>
+</section>
+
+<!-- ============ ADMIN PANEL ============ -->
+<section class="view" id="v-admin">
+  <div class="admin-subtabs">
+    <button class="admin-subtab active" data-ap="projects">Projects</button>
+    <button class="admin-subtab" data-ap="users">Users</button>
+    <button class="admin-subtab" data-ap="perms" id="permsSubtabBtn">Permissions</button>
+  </div>
+
+  <div class="admin-pane active" id="ap-projects">
+    <div class="card">
+      <h2>＋ New project</h2>
+      <div class="row-flex">
+        <input type="text" id="newProjName" placeholder="Project name" style="flex:1;min-width:160px">
+        <button class="btn" id="newProjBtn">Create</button>
+      </div>
+    </div>
+    <div class="card"><h2>All projects</h2><div id="projList"></div></div>
+  </div>
+
+  <div class="admin-pane" id="ap-users">
+    <div class="card">
+      <h2>＋ Add user</h2>
+      <p class="hint">Creates a real sign-in account. The person can sign in immediately with this email/password.</p>
+      <div class="row-flex">
+        <input type="text" id="newUserEmail" placeholder="Email" style="min-width:180px">
+        <input type="password" id="newUserPass" placeholder="Temporary password" style="min-width:160px">
+        <select id="newUserRole">
+          <option value="developer">Developer</option>
+          <option value="client">Client</option>
+          <option value="admin">Admin</option>
+          <option value="superadmin">Super Admin</option>
+        </select>
+        <button class="btn" id="newUserBtn">Create user</button>
+      </div>
+      <div class="auth-err" id="newUserErr"></div>
+    </div>
+    <div class="card"><h2>All users</h2><div id="userList"></div></div>
+  </div>
+
+  <div class="admin-pane" id="ap-perms">
+    <div class="card">
+      <h2>Default permissions — Developer &amp; Client</h2>
+      <p class="hint">Super Admins and Admins always have full access. These toggles control what Developers and Clients can see across every project (unless a project has a custom override).</p>
+      <div id="permMatrix"></div>
+      <button class="btn" id="permSaveBtn">Save permissions</button>
+    </div>
+    <div class="card" id="permOverrideCard" style="display:none">
+      <h2>Custom permissions for this project</h2>
+      <label class="chip-check"><input type="checkbox" id="permOverrideToggle"> Use custom permissions for the currently open project</label>
+      <div id="permMatrixOverride" style="margin-top:12px"></div>
+      <button class="btn" id="permOverrideSaveBtn" style="margin-top:8px">Save project override</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+</div><!-- /#appShell -->
+
+<script>
+/* ================= DATES ================= */
+const S0 = Date.UTC(1899,11,30);
+const d  = s => new Date(S0 + s*86400000);
+const todaySerial  = () => Math.floor((Date.now()-S0)/86400000);
+const fdate  = s => d(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+const fdateY = s => d(s).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+const serialToISO  = s => d(s).toISOString().slice(0,10);
+const isoToSerial  = iso => Math.round((Date.UTC(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10))-S0)/86400000);
+
+/* ================= DEFAULT WEEKS: Mon 22 Jun 2026, 23 weeks ================= */
+const WEEK1_START = 46195, NUM_WEEKS = 23;
+function buildDefaultWeeks(){
+  const arr=[];
+  for(let i=0;i<NUM_WEEKS;i++){
+    const s=WEEK1_START+i*7, e=s+6;
+    arr.push({id:"wk"+(i+1), label:"Week "+(i+1), start:s, end:e});
+  }
+  return arr;
+}
+function currentWeekId(weeks){
+  const t=todaySerial();
+  const w=weeks.find(w=>t>=w.start&&t<=w.end);
+  return w?w.id:(t<weeks[0].start?weeks[0].id:weeks[weeks.length-1].id);
+}
+function weekRange(w){ return fdate(w.start)+" – "+fdate(w.end); }
+
+/* ================= SEED: TRACKER TASKS ================= */
+const SEED_TASKS = [
+ ["wk1","Function Task","Seller document & shop icon upload","Seller registration flow allows document uploads and shop icon/logo upload","","Completed","High"],
+ ["wk1","Function Task","Seller login after admin approval","Seller can log in only after admin reviews and approves the registration","","Completed","High"],
+ ["wk1","Function Task","Seller live GPS location sharing","Seller can share current location on the map using GPS","","Completed","High"],
+ ["wk1","Function Task","Buyer account creation","Buyer can create an account","","Completed","High"],
+ ["wk1","Function Task","Seller multiple saved addresses","Seller can add more than one location — home, office, etc.","","Completed","Medium"],
+ ["wk1","Function Task","Seller default address selection","Seller can change/set the default address among saved locations","","Completed","Medium"],
+ ["wk1","Function Task","Buyer views seller's added food","When a seller adds food items, the buyer can view them","","Completed","High"],
+ ["wk1","Function Task","Buyer views seller list","Buyer can now view the list of sellers","","Completed","High"],
+ ["wk1","UI Issue","UI build-out — all apps & web dashboard","UI implementation completed across Buyer, Seller, Driver apps and Admin Dashboard","","Completed","High"],
+ ["wk2","Bug","Admin panel seller profile fields update","Document fields are missing in the seller profile view in the admin panel","Pabashi","Completed","Medium"],
+ ["wk2","Function Task","Purchase notification to seller","When a buyer purchases food, a notification should be sent to the seller","Ranul","Completed","High"],
+ ["wk2","Function Task","Show seller location for pickup orders","If the buyer chooses pickup, the seller's location should be shown to the buyer","Ranul","Completed","Medium"],
+ ["wk2","Function Task","Nearest home food / food truck on home page","Home page should show nearest home food, food truck, etc.","Ranul","Completed","Medium"],
+ ["wk2","UI Issue","General UI changes","Minor UI adjustments across screens","Ranul","Completed","Low"],
+ ["wk2","Bug","Buyer sign-up profile photo upload fix","Profile photo upload fails during buyer sign-up","Ranul","Completed","High"],
+ ["wk2","UI Issue","Remove Seller Registration link above profile photo icon","","Ranul","Completed","Low"],
+ ["wk2","Function Task","Seller documents: support PDF, JPG and PNG","","Ranul","Completed","Medium"],
+ ["wk2","Function Task","Search bar function in Seller App","","Ranul","Completed","Medium"],
+ ["wk2","Bug","Navbar conflict in Seller App","After clicking orders pane, navbar changed and unable to get back to the home screen","Ranul","Completed","High"],
+ ["wk2","UI Issue","Seller app splash: show “Aleken Seller” not “aleken_seller”","","Ranul","Not Started","Low"],
+ ["wk2","Function Task","Driver sign-up page + admin fields update","Licence, vehicle licence, vehicle insurance","Pabashi","Completed","High"],
+ ["wk2","Function Task","Driver sign-up request to admin not sending","","Pabashi","Completed","High"],
+ ["wk2","Bug","Uploaded documents can't be viewed in driver pane (admin portal)","","Pabashi","Not Started","Medium"],
+ ["wk2","Function Task","Added payment methods","","Ranul","Completed","High"],
+ ["wk2","Function Task","Seller tip added","","Ranul","Completed","Medium"],
+ ["wk2","Function Task","Customer review screen added in Seller app","","Ranul","Completed","Medium"],
+ ["wk3","UI Issue","General UI changes in Buyer and Seller apps","","","Not Started","Medium"],
+ ["wk3","Function Task","Numeric phone number validation on all Sign-Up screens","","","Not Started","Medium"],
+ ["wk3","Bug","Fix login input issues in Seller and Buyer apps","","Pabashi","Completed","High"],
+ ["wk3","Bug","Fix the Seller Sign-Up bug","","","Not Started","High"],
+ ["wk3","Bug","Fix PDF viewing issues on the Dashboard","","","Not Started","Medium"],
+ ["wk3","Function Task","Complete the pre-order flow","","","Not Started","High"],
+ ["wk3","Function Task","Implement the pre-order chat flow","","","Not Started","High"],
+ ["wk3","Function Task","Add validation messages across all applications","","","Not Started","Medium"],
+ ["wk3","Function Task","Review detail pages — ensure all required info is displayed","","","Not Started","Medium"],
+ ["wk3","Function Task","Display nearby delivery jobs to drivers","","","Not Started","High"],
+ ["wk3","Function Task","Complete Delivery Job Card, Details screen and pop-ups","","","Not Started","High"],
+ ["wk3","Function Task","Assign delivery job to the first driver who accepts","","","Not Started","High"],
+ ["wk3","Function Task","Drivers can update delivery progress for buyers and sellers","","","Not Started","High"],
+ ["wk3","Function Task","Redirect driver to delivery map after accepting; show seller & buyer locations","","","Not Started","High"],
+ ["wk3","Bug","Screen transition animation — navigation should stay static, only pages transfer","","","Not Started","Medium"],
+ ["wk3","Function Task","Payment method page in buyer profile section","","","Not Started","Medium"],
+ ["wk3","Function Task","Refine buyer profile screen","","","Not Started","Low"],
+ ["wk3","Function Task","Pre-order option when seller adds food","If pre-order is available, seller can select it when adding a food item","","Not Started","Medium"],
+ ["wk3","Function Task","Location privacy option","Seller chooses to share exact location or just a general radius on the map","","Not Started","Medium"],
+ ["wk3","Function Task","Custom map markers","Seller can upload a dish photo or logo as their map marker instead of a name","","Not Started","Low"],
+ ["wk3","Function Task","Hidden address feature","Toggle in Seller App to hide exact address from buyers","","Not Started","Medium"],
+ ["wk3","Bug","Add a back button to the buyer app sign-up screen","","Pabashi","Completed","Medium"],
+ ["wk3","Function Task","Add a function to remove food from the cart","","","Not Started","High"],
+ ["wk3","Function Task","Food details popup when a food item is clicked","","","Not Started","Medium"],
+ ["wk3","Function Task","Change location from top of home screen via map","","Pabashi","Completed","Medium"],
+];
+
+/* ================= SEED: PROJECT PLAN (rescaled to 1 Jun – 31 Oct 2026) ================= */
+const SEED_PLAN = [
+ ["1.1",1,"Project Proposal","Project Manager",46174,46180,100,"Completed"],
+ ["1.2",1,"Functional Flow Specification (26 screens)","Business Analyst",46180,46197,100,"Completed"],
+ ["1.3",1,"Software Requirements Specification (78 reqs)","Business Analyst",46186,46200,100,"Completed"],
+ ["1.4",1,"Business Requirements & Client Agreement Doc","Project Manager",46197,46206,100,"Completed"],
+ ["1.5",1,"Admin Web Dashboard Functional Specification","Business Analyst",46213,46218,20,"In Progress"],
+ ["2.1",2,"Buyer App UI Design (Google Stitch)","UI/UX Designer",46214,46223,0,"Not Started"],
+ ["2.2",2,"Seller App UI Design (Google Stitch)","UI/UX Designer",46219,46226,0,"Not Started"],
+ ["2.3",2,"Driver App UI Design (Google Stitch)","UI/UX Designer",46223,46229,0,"Not Started"],
+ ["2.4",2,"Admin Dashboard UI Design (Google Stitch)","UI/UX Designer",46219,46228,0,"Not Started"],
+ ["2.5",2,"Design Review & Client Sign-off","Project Manager",46230,46233,0,"Not Started"],
+ ["3.1",3,"Database Schema & Data Models Setup","Backend Team",46221,46227,0,"Not Started"],
+ ["3.2",3,"Core APIs — Auth & User Management","Backend Team",46228,46235,0,"Not Started"],
+ ["3.3",3,"Order Management & State Machine APIs","Backend Team",46230,46239,0,"Not Started"],
+ ["3.4",3,"Payments & Tipping APIs","Backend Team",46235,46242,0,"Not Started"],
+ ["3.5",3,"WebSocket Real-Time Features","Backend Team",46240,46246,0,"Not Started"],
+ ["3.6",3,"Third-Party Integrations","Backend Team",46242,46250,0,"Not Started"],
+ ["3.7",3,"Admin Dashboard Backend APIs","Backend Team",46235,46244,0,"Not Started"],
+ ["4.1",4,"Buyer App Development","Mobile Dev Team",46235,46263,0,"Not Started"],
+ ["4.2",4,"Seller App Development","Mobile Dev Team",46240,46265,0,"Not Started"],
+ ["4.3",4,"Driver App Development","Mobile Dev Team",46245,46267,0,"Not Started"],
+ ["4.4",4,"Admin Web Dashboard Development","Web Dev Team",46245,46269,0,"Not Started"],
+ ["5.1",5,"Unit Testing","QA Team",46263,46269,0,"Not Started"],
+ ["5.2",5,"Integration Testing","QA Team",46270,46276,0,"Not Started"],
+ ["5.3",5,"User Acceptance Testing (UAT)","QA Team / Client",46277,46283,0,"Not Started"],
+ ["5.4",5,"Bug Fixing & Regression Testing","Dev + QA Team",46283,46290,0,"Not Started"],
+ ["5.5",5,"Performance & Load Testing","QA Team",46285,46290,0,"Not Started"],
+ ["5.6",5,"Security Testing","QA Team",46285,46290,0,"Not Started"],
+ ["6.1",6,"App Store / Play Store Submission","Mobile Dev Team",46290,46296,0,"Not Started"],
+ ["6.2",6,"Admin Dashboard Production Deployment","DevOps",46290,46294,0,"Not Started"],
+ ["6.3",6,"Production Environment Setup","DevOps",46286,46290,0,"Not Started"],
+ ["6.4",6,"Soft Launch / Pilot","Project Manager",46298,46303,0,"Not Started"],
+ ["6.5",6,"Client Training & Handover","Project Manager",46298,46301,0,"Not Started"],
+ ["6.6",6,"Official Launch","Project Manager",46303,46303,0,"Not Started"],
+ ["7.1",7,"Monitoring & Post-Launch Bug Fixes","Dev + QA Team",46304,46323,0,"Not Started"],
+ ["7.2",7,"Post-Launch Review","Project Manager",46323,46326,0,"Not Started"],
+];
+const PHASES = {
+ 1:{name:"Documentation & Requirements",color:"#1B7A5A"},
+ 2:{name:"UI/UX Design",color:"#2B5D8A"},
+ 3:{name:"Backend & API Development",color:"#7A4E9E"},
+ 4:{name:"App & Web Development",color:"#B7791F"},
+ 5:{name:"QA & Testing",color:"#B4513E"},
+ 6:{name:"Deployment & Launch",color:"#1F8A9E"},
+ 7:{name:"Post-Launch Support",color:"#6B7370"},
+};
+
+/* ================= SEED: MILESTONES (editable) ================= */
+const SEED_MILES = [
+ {name:"All documentation complete", note:"Admin dashboard spec is the final item", when:46218, status:"In Progress"},
+ {name:"Design sign-off", note:"Client sign-off on all 4 apps", when:46233, status:"Not Started"},
+ {name:"Backend APIs ready", note:"Core services + integrations ready", when:46250, status:"Not Started"},
+ {name:"All apps code-complete", note:"Buyer, Seller, Driver, Admin", when:46269, status:"Not Started"},
+ {name:"UAT passed", note:"Client-validated build", when:46283, status:"Not Started"},
+ {name:"Production environment live", note:"Servers, CI/CD, monitoring live", when:46290, status:"Not Started"},
+ {name:"Soft launch / pilot", note:"Limited region rollout", when:46298, status:"Not Started"},
+ {name:"Official launch", note:"Full market release", when:46303, status:"Not Started"},
+ {name:"Hypercare complete", note:"Post-launch monitoring ends", when:46323, status:"Not Started"},
+];
+
+/* ================= SEED: REQUIREMENT VERSIONS ================= */
+const SEED_VERS = [
+ {ver:"1.0", title:"Original Functional Flow Specification", date:"2026-06-23",
+  changes:["26 screens across Buyer, Seller and Driver apps","User roles: Buyer, Seller, Driver, Admin (web dashboard)","Pre-Order and Instant Order processing flows","Buyer–Seller–Driver chat and call features"]},
+ {ver:"1.1", title:"New client requirements", date:"2026-07-05",
+  changes:["Location Privacy Option — seller shares exact location or just a general radius","Custom Map Markers — seller uploads a dish photo or logo as their map icon","Paid Promotions / Featured List at the top of the Buyer home screen (client stressed: very important)","Hidden Address Feature — toggle in Seller App to hide exact address from buyers","Free Food Option — toggle for sellers to list food as free / donation"]},
+];
+
+/* ================= DOCUMENT CONTENT (Aleken_Functional_Flow_1_0.docx) ================= */
+const DOC = [
+{sec:"Overview & User Roles", open:true, screens:[
+ {t:"About this document", items:[
+  "Complete functional specification for building the Aleken food delivery platform — Buyer App · Seller App · Driver App.",
+  "Navigation and workflow screens should dynamically change according to the order type, seller type, delivery method and order status."]},
+ {t:"User Roles", items:[
+  "Buyer — end customer who browses and orders food (auth scope: buyer:*)",
+  "Seller — home chef, food truck, or street food vendor (seller:*, after approval)",
+  "Driver — independent contractor delivering orders (driver:*, after approval)",
+  "Admin — platform operator on a separate web dashboard (admin:*)"]},
+]},
+{sec:"Buyer App — Functional Flow", screens:[
+ {n:"01", t:"Login", items:[
+  "Buyers and Sellers log in with email and password and are redirected to their respective dashboards on success.",
+  "Login page includes: app logo, app name, short description, email + password fields, “Forgot Password?”, Login button, and Google Sign-In.",
+  "Below the login section: “Create Buyer Account” and “Join as a Chef” options redirecting to the relevant registration pages.",
+  "Buyer Registration creates a buyer account with the required personal details; Chef Registration collects seller info and verification documents."]},
+ {n:"02", t:"Buyer Registration", items:[
+  "Fields: Full Name, Email Address, Telephone Number, Password, Confirm Password, Delivery Address (optional).",
+  "Option to register directly with a Google account.",
+  "“Create Account” button completes registration; link below: “Already have an account? Log In”.",
+  "On success the user is automatically redirected to the Buyer Dashboard."]},
+ {n:"03", t:"Buyer Home", items:[
+  "Top: user's profile picture and name, then a personalised greeting (e.g. “Hello, John — Good morning! What would you like to eat today?”).",
+  "Search bar for food items, chefs, food trucks or street food vendors.",
+  "Three quick-access category icons: Street Food · Food Trucks · Home Food.",
+  "“Popular Nearby Foods” section showing food cards based on the user's location, with a “See All” button.",
+  "Each food card contains: food image, food name, vendor name, vendor type, rating (⭐ 4.8), distance (e.g. 1.2 km away), price, pickup/delivery time, availability status, short description, “View Details” and “Order Now” buttons.",
+  "Filters: distance, price, rating, delivery time, food category.",
+  "Clicking a food card opens the Food Details page (photos, ingredients, vendor info, reviews, delivery/pickup options, add to cart, order placement)."]},
+ {n:"04", t:"Food Category Listing (Food Trucks · Home Food · Street Food)", items:[
+  "Clicking a category icon opens a listing page of all nearby vendors in that category, based on the user's current location.",
+  "Search bar at top: vendor name, food item, cuisine type or location.",
+  "Switch between List View and Map View to locate nearby vendors.",
+  "Filters and sorting: distance, rating, delivery time, pickup availability, pre-order availability, price range.",
+  "Each vendor card shows: image, name, type, short description, ratings and review count, distance, estimated delivery/pickup time, top food items, price range, open/closed status, pre-order availability, pickup and delivery availability, “View Details” and “Order Now”.",
+  "Vendors supporting pre-order show a visible “Pre-Order Available” badge.",
+  "Infinite scrolling or pagination for smooth browsing."]},
+ {n:"05", t:"Vendor Details & Food Details", items:[
+  "Vendor Details page shows: name, cover photo, type, full description, ratings and reviews, distance, exact location, interactive map, contact info, operating hours, pickup/delivery availability, pre-order availability, promotions and discounts, food categories, popular items, customer reviews.",
+  "Food Menu section: all categories and items with image, name, short description, price, rating, preparation time, availability status and Add to Cart button.",
+  "Food Details page (opened from home, popular nearby, vendor page, search results or category listing) shows: image gallery, name, detailed description, price, ratings and reviews, ingredients, preparation time, portion size, vendor info and location, pickup/delivery options, availability, related recommendations.",
+  "Users can: select quantity, add special instructions, add to cart, order immediately with “Buy Now”, add to favourites/wishlist, share the food item.",
+  "Add to Cart puts the item in the shopping cart; users can review, modify and proceed to checkout from the cart page."]},
+ {n:"06", t:"Cart & Checkout Process", items:[
+  "In the cart, users can: review items, change quantity, remove items, add special instructions, add a seller tip.",
+  "Order method: Delivery or Pickup.",
+  "Payment methods: Credit/Debit Card, Google Pay / Apple Pay, Cash on Delivery / Cash on Pickup.",
+  "Checkout page displays: food item total, delivery fee (if applicable), seller tip, taxes/service charges, final total, selected delivery/pickup option, selected payment method.",
+  "“Confirm Order” places the order and redirects to Order Confirmation.",
+  "Note: if it is a pre-order, Cash on Delivery is not available."]},
+ {n:"07–09", t:"Order Confirmation & Tracking", items:[
+  "After payment, the user is redirected to the Pickup Order Page or Delivery Order Page depending on the order method.",
+  "Pickup Order Page: confirmation message, seller name and location, pickup address, map with navigation, estimated pickup time, order status tracking, buyer–seller chat. For pre-orders, status is tracked until the food is ready; the buyer is notified, then can navigate to pickup. Instant pickup shows estimated pickup time immediately.",
+  "Delivery Order Page: confirmation message, estimated delivery time, seller details, driver details and contact option, live order tracking, delivery address, map with live driver location, order status updates, buyer–seller chat.",
+  "Delivery status steps: Order Confirmed → Food Preparing → Food Ready → Driver Assigned → Picked Up → On the Way → Delivered.",
+  "Notifications: order confirmed, seller starts preparing, food ready, driver assigned, driver picks up, delivered / ready for pickup.",
+  "Buyer–seller chat opens after confirmation; buyer–driver chat/call available for delivery orders. Rating prompt appears soon after the parcel arrives or is picked up."]},
+]},
+{sec:"Seller App — Functional Flow", screens:[
+ {n:"10", t:"Kitchen Community Registration", items:[
+  "Users register as a Kitchen Community member by choosing a seller type: Food Truck, Home Food or Street Food.",
+  "Registration fields: Full Name, Business/Food Brand Name, Seller Type, Email, Telephone, Password, Confirm Password, Pickup Location Address, Business Description, Food Category / Cuisine Type, Legal Document upload, Identity Document upload, Food Safety or Business Licence upload (if required), Profile Image or Logo upload.",
+  "After submission the account is created and sent for verification/approval.",
+  "Once approved, the seller logs in from the main login screen and is redirected to the relevant Seller Dashboard for their seller type."]},
+ {n:"11", t:"Seller Dashboard", items:[
+  "Seller's profile picture on the top-right of the screen.",
+  "Revenue Indicator card at the top: Today's Revenue, Weekly Revenue, Monthly Revenue, Total Orders, Revenue Growth %.",
+  "Quick action cards: Today's Orders, Completed Orders, Pre-Order Requests, Pending Orders, Cancelled Orders.",
+  "Seller action section: Add New Food Item, View Today's Orders, Manage All Orders, Manage Menu, Manage Pre-Orders, Update Availability, View Customer Reviews, View Earnings — each redirects to the relevant management page."]},
+ {n:"12", t:"Order History & Menu Management", items:[
+  "Order History shows all past and current orders received by the seller.",
+  "Each order card includes: order reference number, customer name, order description, ordered items, date and time, order type (pickup/delivery), order status, payment status, total price, seller tip, delivery/pickup time, View Details button.",
+  "Order statuses: Pending, Accepted, Preparing, Ready for Pickup, Driver Assigned, Out for Delivery, Completed, Cancelled.",
+  "Menu Management: add new food items, edit existing items, delete items, update availability, change prices, mark items as popular or featured."]},
+ {n:"13", t:"Add / Edit Food", items:[
+  "Add New Food fields: food photo upload, name, description, category, price, estimated preparation time, pickup availability, delivery availability, pre-order availability, quantity/stock, ingredients, portion size, discount or offer details, availability status, Save button.",
+  "After saving, the item appears in the seller's menu and is visible to buyers if marked available.",
+  "Edit Food: photo, name, description, category, price, preparation time, availability, delivery/pickup options, pre-order option, ingredients, stock quantity — changes reflect immediately in the Buyer app."]},
+ {t:"Food Reviews & Seller Profile", items:[
+  "Each food item has its own review section: customer name, rating, comment, date, and food photo review if available. Sellers view food-specific reviews from the dashboard.",
+  "Seller Profile page: profile picture, seller name, seller type, business/brand name, email, telephone, pickup location address, account verification status.",
+  "Profile sections: Profile Dashboard, Account Settings, Kitchen Hours / Opening Hours, Pickup Location Settings, Payment Settings, Notification Settings, Legal Documents, Reviews & Ratings, Help & Support, Logout.",
+  "Kitchen Hours: sellers set/update operating hours and mark the kitchen Open, Closed or Temporarily Unavailable — visible to buyers on the vendor details page."]},
+]},
+{sec:"Driver App — Functional Flow", screens:[
+ {n:"14", t:"Driver Registration & Delivery Flow", items:[
+  "The driver has a separate mobile app with a separate registration process.",
+  "Registration fields: Full Name, Email, Phone Number, Password, Confirm Password, Vehicle Type, Vehicle Model, Vehicle Number Plate, Vehicle Licence upload, Vehicle Insurance upload, Driver's Licence upload, Profile Photo.",
+  "After registration the account is sent for verification/approval; once approved, the driver logs in with email and password.",
+  "Driver Dashboard shows available delivery jobs nearby — picked manually by the driver, or assigned manually by a seller.",
+  "Each job card displays: order reference number, seller name, pickup location, buyer delivery location, distance, estimated delivery time, delivery fee / driver earnings, order type, payment status, pickup time, Accept Job button.",
+  "On accepting a job the app opens the navigation map: seller pickup location first, then buyer delivery location.",
+  "Driver status buttons: Accepted → Arrived at Pickup Location → Food Picked Up → On the Way to Buyer → Arrived at Buyer Location → Delivered.",
+  "Driver can contact both buyer and seller via in-app chat and phone call; buyer and seller can track the driver's location during delivery."]},
+]},
+{sec:"Order Processing Flows", screens:[
+ {t:"Pre-Order Process", items:[
+  "Sellers can mark food items as Pre-Order Available when creating or editing menu items; buyers place a pre-order request.",
+  "Before any payment, the seller must review and accept the request. Once accepted: buyer is notified, status becomes “Accepted – Awaiting Payment”, buyer can pay.",
+  "Cash on Delivery is not available for pre-orders — full payment must be completed before the pre-order is confirmed.",
+  "After payment: seller notified, buyer–seller chat opens automatically, order enters the preparation queue.",
+  "Seller status updates during preparation: Accepted, Preparing, Cooking, Ready for Pickup/Delivery. Once prepared, the buyer is notified and the order is ready for fulfilment.",
+  "Delivery pre-order: seller assigns a driver manually or the system auto-assigns; driver details shared with buyer and seller; live tracking available.",
+  "Pickup pre-order: buyer notified when food is ready; navigation and pickup instructions displayed."]},
+ {t:"Instant Order Process", items:[
+  "Buyers browse available items and order immediately; if the item is available they go straight to checkout and choose Online Payment or Cash on Delivery.",
+  "After confirmation the seller receives the order immediately and it enters the preparation queue.",
+  "Delivery instant order: system auto-assigns an available driver; driver details shown to buyer and seller; when the seller marks food “Ready for Pickup” the driver is notified, navigates to the seller, collects the food, and live tracking begins.",
+  "Pickup instant order: no driver assigned; buyer receives preparation and ready-for-pickup notifications, then navigates to the seller's location to collect."]},
+ {t:"Communication Features", items:[
+  "Throughout both flows: Buyer ↔ Seller chat, Buyer ↔ Driver chat (delivery orders), Seller ↔ Driver chat (delivery orders), and call functionality when required."]},
+]},
+];
+
+/* ================= FIREBASE ================= */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAudQTibH_ufCh-Im-hIhsiLlEY-ooGl_8",
+  authDomain:        "aleken-hub.firebaseapp.com",
+  projectId:         "aleken-hub",
+  storageBucket:     "aleken-hub.firebasestorage.app",
+  messagingSenderId: "497670944179",
+  appId:             "1:497670944179:web:3f5dac3a537d8358be07c6"
+};
+const LEGACY_DOC_PATH = "aleken-hub/v3"; // pre-auth single-project doc, migrated once
+let db = null, auth = null, secondaryApp = null;
+function initFirebase(){
+  try{
+    if(firebase.apps.length === 0){
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    db = firebase.firestore();
+    auth = firebase.auth();
+    return true;
+  }catch(e){
+    console.error("Firebase init error:", e.message);
+    return false;
+  }
+}
+// Used only to create new user accounts without signing the acting admin out.
+function getSecondaryAuth(){
+  if(!secondaryApp){
+    secondaryApp = firebase.initializeApp(FIREBASE_CONFIG, "secondary");
+  }
+  return secondaryApp.auth();
+}
+
+/* ================= ROLES & PERMISSIONS ================= */
+const TAB_KEYS = ["tracker","reqs","plan","milestones","overview"];
+const TAB_LABELS = {tracker:"Weekly Tracker", reqs:"Requirements", plan:"Project Plan", milestones:"Milestones", overview:"Overview"};
+const FIELD_KEYS = ["developerNames","progress"];
+const FIELD_LABELS = {developerNames:"Developer / assignee names", progress:"Progress indicators (% complete, done counts, overview metrics)"};
+const GOVERNED_ROLES = ["developer","client"];
+function defaultPermBucket(role){
+  return {
+    tabs:{tracker:true, reqs:true, plan:true, milestones: role!=="client", overview:true},
+    fields:{developerNames: role!=="client", progress:true}
+  };
+}
+function defaultPermMatrix(){
+  return {developer:defaultPermBucket("developer"), client:defaultPermBucket("client")};
+}
+let permDefault = defaultPermMatrix();
+let permOverride = null; // set per-project if that project has a custom override enabled
+
+function effectivePerms(){ return permOverride || permDefault; }
+function isUnrestricted(){ return myProfile && (myProfile.role==="superadmin" || myProfile.role==="admin"); }
+function canSeeTab(v){
+  if(!myProfile) return false;
+  if(v==="admin") return isUnrestricted();
+  if(isUnrestricted()) return true;
+  const bucket = effectivePerms()[myProfile.role];
+  return !bucket || bucket.tabs[v]!==false;
+}
+function canSeeField(key){
+  if(!myProfile) return false;
+  if(isUnrestricted()) return true;
+  const bucket = effectivePerms()[myProfile.role];
+  return !bucket || bucket.fields[key]!==false;
+}
+
+/* ================= AUTH & PROJECT STATE ================= */
+let currentUser = null;   // firebase auth user
+let myProfile = null;     // {email,name,role,projects:[]}
+let currentProjectId = null;
+let currentProjectName = "";
+let projectsCache = [];
+let usersCache = [];
+let permOverrideEnabled = false;
+
+async function fetchPermDefault(){
+  try{
+    const snap = await db.doc("permissions/matrix").get();
+    if(snap.exists){
+      const d = snap.data();
+      permDefault = {
+        developer: Object.assign(defaultPermBucket("developer"), d.developer||{}, {
+          tabs: Object.assign({}, defaultPermBucket("developer").tabs, (d.developer||{}).tabs||{}),
+          fields: Object.assign({}, defaultPermBucket("developer").fields, (d.developer||{}).fields||{})
+        }),
+        client: Object.assign(defaultPermBucket("client"), d.client||{}, {
+          tabs: Object.assign({}, defaultPermBucket("client").tabs, (d.client||{}).tabs||{}),
+          fields: Object.assign({}, defaultPermBucket("client").fields, (d.client||{}).fields||{})
+        })
+      };
+    } else {
+      permDefault = defaultPermMatrix();
+      await db.doc("permissions/matrix").set(permDefault).catch(()=>{});
+    }
+  }catch(e){ console.error("Could not load permissions/matrix:", e.message); }
+}
+async function fetchPermOverride(projectId){
+  permOverride = null; permOverrideEnabled = false;
+  try{
+    const snap = await db.doc("projectPermOverrides/"+projectId).get();
+    if(snap.exists && snap.data().enabled){
+      const d = snap.data();
+      permOverrideEnabled = true;
+      permOverride = {developer:d.developer||defaultPermBucket("developer"), client:d.client||defaultPermBucket("client")};
+    }
+  }catch(e){ console.error("Could not load project permission override:", e.message); }
+}
+
+async function fetchMyProfile(uid){
+  const snap = await db.doc("users/"+uid).get();
+  if(!snap.exists) return null;
+  const d = snap.data();
+  return {uid, email:d.email||"", name:d.name||"", role:d.role||"client", projects:d.projects||[]};
+}
+
+async function migrateLegacyIfNeeded(){
+  try{
+    const projSnap = await db.collection("projects").limit(1).get();
+    if(!projSnap.empty) return;
+    const legacy = await db.doc(LEGACY_DOC_PATH).get();
+    const payload = legacy.exists ? legacy.data() : buildPayload();
+    await db.doc("projects/aleken-legacy").set({name:"Aleken", createdAt:Date.now(), archived:false});
+    await db.doc("projects/aleken-legacy/data/main").set(payload);
+  }catch(e){ console.error("Legacy migration skipped:", e.message); }
+}
+
+async function fetchProjects(){
+  const snap = await db.collection("projects").get();
+  projectsCache = snap.docs.map(d=>({id:d.id, ...d.data()})).filter(p=>!p.archived);
+  return projectsCache;
+}
+function projectsVisibleToMe(){
+  if(!myProfile) return [];
+  if(isUnrestricted()) return projectsCache;
+  return projectsCache.filter(p=>(myProfile.projects||[]).includes(p.id));
+}
+
+/* ================= STATE (current project's data) ================= */
+let weeks = buildDefaultWeeks();
+let tasks = SEED_TASKS.map((t,i)=>({id:"seed"+i, week:t[0], cat:t[1], name:t[2], desc:t[3], who:t[4], status:t[5]||"Not Started", priority:t[6]||"Medium"}));
+let plan  = SEED_PLAN.map((r,i)=>({id:"p"+i, code:r[0], phase:r[1], name:r[2], owner:r[3], start:r[4], end:r[5], pct:r[6], status:r[7]}));
+let miles = SEED_MILES.map((m,i)=>({id:"m"+i, ...m}));
+let vers  = SEED_VERS.map((v,i)=>({id:"v"+i, ...v}));
+let openWeeks = null; // populated after loadState
+let openDocs  = new Set([0]);
+let editingPlanId = null;
+let editingWeekId = null;
+let editingTaskId = null;
+
+function note(t){ savedNote.textContent = t; }
+
+let isSaving = false; // prevent snapshot loop
+let unsubProjectDoc = null;
+
+function projectDocRef(){ return db.doc("projects/"+currentProjectId+"/data/main"); }
+
+async function loadState(){
+  if(unsubProjectDoc){ unsubProjectDoc(); unsubProjectDoc=null; }
+  try{
+    note("🔄 Connecting…");
+    const snap = await projectDocRef().get();
+    if(snap.exists){
+      applyState(snap.data());
+    } else {
+      await projectDocRef().set(buildPayload());
+    }
+    note("🟢 Connected — live sync on");
+    unsubProjectDoc = projectDocRef().onSnapshot(snap=>{
+      if(!snap.exists) return;
+      if(isSaving) return; // our own save triggered this, skip
+      applyState(snap.data());
+      refreshAll();
+      note("🟢 Synced " + new Date().toLocaleTimeString());
+    }, err=>{
+      note("⚠ Sync lost — " + err.message);
+      console.error("Snapshot error:", err);
+    });
+  }catch(e){
+    note("⚠ Firestore error — " + e.message);
+    console.error("Firebase error:", e);
+    fallbackLoad();
+  }
+}
+
+function applyState(s){
+  if(s.weeks) weeks=s.weeks;
+  if(s.tasks) tasks=s.tasks;
+  if(s.plan)  plan=s.plan;
+  if(s.miles) miles=s.miles;
+  if(s.vers)  vers=s.vers;
+  if(s.openWeeks) openWeeks=new Set(s.openWeeks);
+}
+function fallbackLoad(){
+  try{
+    const raw=localStorage.getItem("aleken-hub-project-"+currentProjectId);
+    if(raw) applyState(JSON.parse(raw));
+    note("⚠ Using local storage only — changes won't sync to other devices");
+  }catch(e){}
+}
+function buildPayload(){
+  if(!openWeeks) openWeeks = new Set([currentWeekId(weeks),"wk1","wk2","wk3"]);
+  return {weeks, tasks, plan, miles, vers, openWeeks:[...openWeeks]};
+}
+
+let saveTimer;
+async function saveState(){
+  note("Saving…");
+  clearTimeout(saveTimer);
+  const payload = buildPayload();
+  // Also save locally as backup
+  try{ localStorage.setItem("aleken-hub-project-"+currentProjectId, JSON.stringify(payload)); }catch(e){}
+  saveTimer = setTimeout(async ()=>{
+    if(!db || !currentProjectId){ note("Saved locally ✓ (no cloud)"); return; }
+    try{
+      isSaving = true;
+      await projectDocRef().set(payload);
+      note("Saved ✓ — synced to all devices");
+    }catch(e){
+      note("⚠ Cloud save failed: " + e.message + " — check Firestore rules");
+      console.error("Save error:", e);
+    } finally {
+      // Give the snapshot a moment to fire before clearing the flag
+      setTimeout(()=>{ isSaving = false; }, 1500);
+    }
+  }, 500);
+}
+
+/* ================= HELPERS ================= */
+const esc = s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const stBadge = s=>s==="Completed"?"b-done":(s==="In Progress"?"b-prog":"b-not");
+const prBadge = p=>p==="High"?"b-high":(p==="Medium"?"b-med":"b-low");
+const catBadge = c=>c==="Bug"?"b-bug":(c==="UI Issue"?"b-ui":"b-func");
+const catShort = c=>c==="Function Task"?"Function":c==="UI Issue"?"UI":"Bug";
+const NEXT = {"Not Started":"In Progress","In Progress":"Completed","Completed":"Not Started"};
+
+function refreshAll(){
+  if(!openWeeks) openWeeks = new Set([currentWeekId(weeks),"wk1","wk2","wk3"]);
+  applyTabVisibility();
+  refreshPeople(); refreshWeekSelect();
+  renderTracker(); renderVers(); renderDoc(); renderGantt(); renderMiles(); renderOverview();
+}
+
+function applyTabVisibility(){
+  document.querySelectorAll('.tab,.bottom-tab').forEach(btn=>{
+    const v = btn.dataset.v;
+    const show = canSeeTab(v);
+    btn.style.display = show ? "" : "none";
+  });
+  // if the currently active view just got hidden, jump to the first visible tab
+  const activeV = document.querySelector('.view.active');
+  if(activeV && !canSeeTab(activeV.id.replace("v-",""))){
+    const firstVisible = [...document.querySelectorAll('.tab')].find(b=>b.style.display!=="none");
+    if(firstVisible) switchView(firstVisible.dataset.v);
+  }
+}
+
+/* ================= TRACKER ================= */
+function taskEditPanel(t){
+  return `<div class="task-edit-panel">
+    <div class="tep-grid">
+      <div class="tep-name"><label class="field-label">Task name</label><input type="text" id="te_name" value="${esc(t.name)}"></div>
+      <div class="tep-desc"><label class="field-label">Description</label><textarea id="te_desc" rows="2" style="resize:vertical">${esc(t.desc||"")}</textarea></div>
+      <div><label class="field-label">Type</label><select id="te_cat">
+        <option${t.cat==="Function Task"?" selected":""}>Function Task</option>
+        <option${t.cat==="UI Issue"?" selected":""}>UI Issue</option>
+        <option${t.cat==="Bug"?" selected":""}>Bug</option>
+      </select></div>
+      <div><label class="field-label">Priority</label><select id="te_priority">
+        <option${t.priority==="High"?" selected":""}>High</option>
+        <option${t.priority==="Medium"?" selected":""}>Medium</option>
+        <option${t.priority==="Low"?" selected":""}>Low</option>
+      </select></div>
+      <div><label class="field-label">Status</label><select id="te_status">
+        <option${t.status==="Not Started"?" selected":""}>Not Started</option>
+        <option${t.status==="In Progress"?" selected":""}>In Progress</option>
+        <option${t.status==="Completed"?" selected":""}>Completed</option>
+      </select></div>
+      <div><label class="field-label">Assigned to</label><input type="text" id="te_who" value="${esc(t.who||"")}" list="peopleList"></div>
+      <div><label class="field-label">Week</label><select id="te_week">${weeks.map(w=>`<option value="${w.id}"${t.week===w.id?" selected":""}>${esc(w.label)}</option>`).join("")}</select></div>
+    </div>
+    <div class="tep-actions">
+      <button class="btn" data-tsave="${t.id}">Save</button>
+      <button class="btn secondary" data-tcancel>Cancel</button>
+      <button class="btn danger" data-tdel="${t.id}" style="margin-left:auto">Delete</button>
+    </div>
+  </div>`;
+}
+
+function renderTracker(){
+  if(!openWeeks) openWeeks = new Set([currentWeekId(weeks),"wk1","wk2","wk3"]);
+  const fc=fCat.value, fs=fStatus.value, fw=fWho.value, q=fSearch.value.toLowerCase();
+  const filtering=fc||fs||fw||q, nowId=currentWeekId(weeks);
+  const showDev=canSeeField("developerNames"), showProg=canSeeField("progress");
+  let html="";
+  for(const w of weeks){
+    const all=tasks.filter(t=>t.week===w.id);
+    const rows=all.filter(t=>(!fc||t.cat===fc)&&(!fs||t.status===fs)&&(!fw||t.who===fw)&&(!q||(t.name+" "+(t.desc||"")).toLowerCase().includes(q)));
+    if(filtering&&!rows.length&&!all.length) continue;
+    const done=all.filter(t=>t.status==="Completed").length;
+    const isNow=w.id===nowId;
+    const isOpen=filtering?rows.length>0:openWeeks.has(w.id);
+    const isEditingW = editingWeekId===w.id;
+    html+=`<div class="week-block${isOpen?" open":""}${isNow?" current":""}" data-week="${w.id}">
+      <div class="week-head" data-wh="${w.id}">
+        <span class="chev">▶</span>
+        <h3>${esc(w.label)}</h3>
+        <span class="range">${weekRange(w)}</span>
+        ${isNow?'<span class="now-tag">NOW</span>':""}
+        ${showProg?`<span class="count">${done}/${all.length}</span>`:""}
+        <button class="edit-week-btn" data-wedit="${w.id}" title="Edit week name / dates">✎</button>
+      </div>`;
+    if(isEditingW){
+      html+=`<div class="week-edit-panel">
+        <div><label class="field-label">Label</label><input type="text" id="we_label" value="${esc(w.label)}" style="max-width:140px"></div>
+        <div><label class="field-label">Start date</label><input type="date" id="we_start" value="${serialToISO(w.start)}" style="max-width:150px"></div>
+        <div><label class="field-label">End date</label><input type="date" id="we_end" value="${serialToISO(w.end)}" style="max-width:150px"></div>
+        <div class="actions">
+          <button class="btn" data-wsave="${w.id}">Save</button>
+          <button class="btn secondary" data-wcancel>Cancel</button>
+        </div>
+      </div>`;
+    }
+    html+=`<div class="week-body">`;
+    if(!rows.length){
+      html+=`<div class="empty">${all.length?"No tasks match filters.":"No tasks yet."}</div>`;
+    } else {
+      // Desktop table
+      html+=`<div class="task-table-wrap"><table class="task-table"><thead><tr>
+        <th style="width:90px">Type</th><th>Task</th>${showDev?'<th style="width:90px">Assigned</th>':""}
+        <th style="width:110px">Status</th><th style="width:72px">Priority</th><th style="width:34px"></th>
+        </tr></thead><tbody>`;
+      for(const t of rows){
+        const isEditingT = editingTaskId===t.id;
+        html+=`<tr class="${isEditingT?"selected":""}">
+          <td><span class="badge ${catBadge(t.cat)}">${catShort(t.cat)}</span></td>
+          <td><div>${esc(t.name)}</div>${t.desc?`<div class="tdesc">${esc(t.desc)}</div>`:""}</td>
+          ${showDev?`<td>${esc(t.who)||"—"}</td>`:""}
+          <td><button class="status-btn" data-tstat="${t.id}"><span class="badge ${stBadge(t.status)}">${t.status}</span></button></td>
+          <td><span class="badge ${prBadge(t.priority)}">${t.priority}</span></td>
+          <td style="white-space:nowrap">
+            <button class="edit-task-btn" data-tedit="${t.id}" title="Edit task">✎</button>
+            <button class="del" data-tdel="${t.id}">×</button>
+          </td></tr>`;
+        if(isEditingT) html+=taskEditPanel(t);
+      }
+      html+=`</tbody></table></div>`;
+      // Mobile cards
+      html+=`<div class="task-cards">`;
+      for(const t of rows){
+        html+=`<div class="task-card">
+          <div class="tc-top">
+            <span class="badge ${catBadge(t.cat)}">${catShort(t.cat)}</span>
+            <span class="badge ${prBadge(t.priority)}">${t.priority}</span>
+            ${(showDev&&t.who)?`<span class="tc-who">· ${esc(t.who)}</span>`:""}
+          </div>
+          <div class="tc-name">${esc(t.name)}</div>
+          ${t.desc?`<div class="tc-desc">${esc(t.desc)}</div>`:""}
+          <div class="tc-bottom">
+            <button class="status-btn" data-tstat="${t.id}"><span class="badge ${stBadge(t.status)}">${t.status}</span></button>
+            <div class="tc-actions">
+              <button class="edit-task-btn" data-tedit="${t.id}" title="Edit task">✎</button>
+              <button class="del" data-tdel="${t.id}">×</button>
+            </div>
+          </div>
+          ${editingTaskId===t.id?taskEditPanel(t):""}
+        </div>`;
+      }
+      html+=`</div>`;
+    }
+    html+=`<button class="quickadd" data-qa="${w.id}">＋ Add task to ${esc(w.label)}</button>
+    </div></div>`;
+  }
+  weeks_el.innerHTML = html;
+}
+
+function refreshPeople(){
+  const people=[...new Set(tasks.map(t=>t.who).filter(Boolean))].sort();
+  const cur=fWho.value;
+  fWho.innerHTML=`<option value="">Everyone</option>`+people.map(p=>`<option${p===cur?" selected":""}>${esc(p)}</option>`).join("");
+  peopleList.innerHTML=people.map(p=>`<option value="${esc(p)}">`).join("");
+}
+function refreshWeekSelect(){
+  const nowId=currentWeekId(weeks);
+  aWeek.innerHTML=weeks.map(w=>`<option value="${w.id}"${w.id===nowId?" selected":""}>${esc(w.label)} · ${weekRange(w)}</option>`).join("");
+}
+
+/* ================= REQUIREMENTS ================= */
+function renderVers(){
+  const sorted=[...vers].sort((a,b)=>(b.date||"").localeCompare(a.date||"")||b.ver.localeCompare(a.ver,undefined,{numeric:true}));
+  verList.innerHTML=sorted.map(v=>`
+    <div class="ver-item">
+      <span class="badge b-ver">v${esc(v.ver)}</span>
+      <div class="vbody">
+        <h4>${esc(v.title)}</h4>
+        <div class="vdate">${v.date?new Date(v.date+"T00:00:00Z").toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}):""}</div>
+        ${v.changes&&v.changes.length?`<ul>${v.changes.map(c=>`<li>${esc(c)}</li>`).join("")}</ul>`:""}
+      </div>
+      <button class="del" data-vdel="${v.id}">×</button>
+    </div>`).join("")||`<div class="empty">No versions yet.</div>`;
+}
+function renderDoc(){
+  docSections.innerHTML=DOC.map((s,i)=>`
+    <div class="doc-sec${openDocs.has(i)?" open":""}" data-doc="${i}">
+      <div class="dhead" tabindex="0"><span class="chev">▶</span>${esc(s.sec)}</div>
+      <div class="dbody">${s.screens.map(sc=>`
+        <div class="screen">
+          <h4>${sc.n?`<span class="scr">Screen ${sc.n}</span>`:""}${esc(sc.t)}</h4>
+          <ul>${sc.items.map(it=>`<li>${esc(it)}</li>`).join("")}</ul>
+        </div>`).join("")}</div>
+    </div>`).join("");
+}
+
+/* ================= PROJECT PLAN ================= */
+function planStart(){ return Math.min(...plan.map(p=>p.start),46174); }
+function planEnd(){ return Math.max(...plan.map(p=>p.end),46326); }
+function renderGantt(){
+  const showDev=canSeeField("developerNames"), showProg=canSeeField("progress");
+  const start=planStart(), end=planEnd(), span=end-start+1, t=todaySerial();
+  const names=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  let cur=d(start); cur=new Date(Date.UTC(cur.getUTCFullYear(),cur.getUTCMonth(),1));
+  const parts=[];
+  while(cur.getTime()<=d(end).getTime()){
+    const mS=Math.max(start,Math.floor((cur.getTime()-S0)/86400000));
+    const nxt=new Date(Date.UTC(cur.getUTCFullYear(),cur.getUTCMonth()+1,1));
+    const mE=Math.min(end+1,Math.floor((nxt.getTime()-S0)/86400000));
+    parts.push({label:names[cur.getUTCMonth()],w:(mE-mS)/span*100});
+    cur=nxt;
+  }
+  let html=`<div class="g-months">${parts.map(p=>`<div style="width:${p.w}%">${p.label}</div>`).join("")}</div><div style="position:relative">`;
+  if(t>=start&&t<=end) html+=`<div class="today-line" style="left:calc(260px + (100% - 260px)*${(t-start)/span})"></div>`;
+  const sorted=[...plan].sort((a,b)=>a.phase-b.phase||a.start-b.start||a.code.localeCompare(b.code,undefined,{numeric:true}));
+  let lastPhase=0;
+  for(const r of sorted){
+    if(r.phase!==lastPhase){
+      const ph=PHASES[r.phase]||{name:"Phase "+r.phase,color:"#6B7370"};
+      html+=`<div class="g-phase-head" style="color:${ph.color}">${r.phase}. ${ph.name}</div>`;
+      lastPhase=r.phase;
+    }
+    const color=(PHASES[r.phase]||{}).color||"#6B7370";
+    const left=(r.start-start)/span*100, w=Math.max((r.end-r.start+1)/span*100,.6);
+    html+=`<div class="g-row${r.id===editingPlanId?" selected":""}" data-plan="${r.id}">
+      <div class="g-label">${esc(r.code)} ${esc(r.name)} ${showDev?`<small>· ${esc(r.owner)}</small>`:""}</div>
+      <div class="g-track"><div class="g-bar" style="left:${left}%;width:${w}%;background:${color}">
+        ${(showProg&&r.pct>0&&r.pct<100)?`<span class="fillpct" style="width:${r.pct}%"></span>`:""}${fdate(r.start)}–${fdate(r.end)}
+      </div></div></div>`;
+  }
+  gantt.innerHTML=html+"</div>";
+  ganttLegend.innerHTML=Object.entries(PHASES).map(([n,p])=>`<span><i style="background:${p.color}"></i>${p.name}</span>`).join("");
+}
+function openPlanEditor(id){
+  editingPlanId=id; const isNew=!id;
+  planEditTitle.textContent=isNew?"Add plan task":"Edit task";
+  pPhase.innerHTML=Object.entries(PHASES).map(([n,p])=>`<option value="${n}">${n}. ${p.name}</option>`).join("");
+  const r=id?plan.find(x=>x.id===id):null;
+  pName.value=r?r.name:""; pOwner.value=r?r.owner:""; pPhase.value=r?r.phase:1;
+  pStart.value=serialToISO(r?r.start:todaySerial()); pEnd.value=serialToISO(r?r.end:todaySerial()+6);
+  pPct.value=r?r.pct:0; pStatus.value=r?r.status:"Not Started";
+  pDelete.style.display=isNew?"none":""; planEdit.classList.add('open'); renderGantt(); pName.focus();
+}
+function closePlanEditor(){ editingPlanId=null; planEdit.classList.remove('open'); renderGantt(); }
+
+/* ================= MILESTONES ================= */
+function renderMiles(){
+  const sorted=[...miles].sort((a,b)=>a.when-b.when);
+  mileList.innerHTML=sorted.map(m=>`
+    <div class="mile ${m.status==="Completed"?"done":m.status==="In Progress"?"prog":""}">
+      <div class="dot"></div>
+      <div><h3>${esc(m.name)}</h3>${m.note?`<p>${esc(m.note)}</p>`:""}</div>
+      <div class="right">
+        <span class="when">${fdateY(m.when)}</span>
+        <button class="status-btn" data-mstat="${m.id}"><span class="badge ${stBadge(m.status)}">${m.status}</span></button>
+        <button class="del" data-mdel="${m.id}">×</button>
+      </div></div>`).join("")||`<div class="empty">No milestones yet.</div>`;
+}
+
+/* ================= OVERVIEW ================= */
+function renderOverview(){
+  if(!canSeeField("progress")){
+    metrics.innerHTML = `<div class="empty">Progress metrics are hidden for your role.</div>`;
+    return;
+  }
+  const done=tasks.filter(t=>t.status==="Completed").length;
+  const bugs=tasks.filter(t=>t.cat==="Bug"&&t.status!=="Completed").length;
+  const inProg=tasks.filter(t=>t.status==="In Progress").length;
+  const totDur=plan.reduce((a,r)=>a+(r.end-r.start+1),0)||1;
+  const planPct=Math.round(plan.reduce((a,r)=>a+(r.pct/100)*(r.end-r.start+1),0)/totDur*100);
+  const launch=miles.find(m=>/official launch/i.test(m.name));
+  const nextMile=[...miles].filter(m=>m.status!=="Completed").sort((a,b)=>a.when-b.when)[0];
+  metrics.innerHTML=`
+    <div class="metric"><b>${done}/${tasks.length}</b><span>Tasks done</span></div>
+    <div class="metric"><b>${inProg}</b><span>In progress</span></div>
+    <div class="metric"><b>${bugs}</b><span>Open bugs</span></div>
+    <div class="metric"><b>${planPct}%</b><span>Plan progress</span></div>
+    <div class="metric"><b>${launch?fdate(launch.when):"—"}</b><span>Official launch</span></div>
+    <div class="metric"><b>${nextMile?fdate(nextMile.when):"—"}</b><span>${nextMile?"Next: "+esc(nextMile.name):"Next milestone"}</span></div>`;
+}
+
+/* ================= NAV ================= */
+function switchView(v){
+  if(!canSeeTab(v)) return;
+  document.querySelectorAll('.tab,.bottom-tab').forEach(x=>x.classList.toggle('active', x.dataset.v===v));
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active', x.id==="v-"+v));
+  if(v==="admin") renderAdminPanel();
+}
+document.querySelectorAll('.tab,.bottom-tab').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.v)));
+
+/* ================= TRACKER EVENTS ================= */
+const weeks_el = document.getElementById('weeks');
+weeks_el.addEventListener('click',e=>{
+  // week head toggle
+  const wh = e.target.closest('[data-wh]');
+  if(wh && !e.target.closest('[data-wedit]') && !e.target.closest('[data-wsave]') && !e.target.closest('[data-wcancel]')){
+    const id=wh.dataset.wh;
+    if(!openWeeks) openWeeks=new Set();
+    openWeeks.has(id)?openWeeks.delete(id):openWeeks.add(id);
+    saveState(); renderTracker(); return;
+  }
+  // edit week button
+  const wedit = e.target.closest('[data-wedit]');
+  if(wedit){ editingWeekId = editingWeekId===wedit.dataset.wedit ? null : wedit.dataset.wedit; renderTracker(); return; }
+  // save week edit
+  const wsave = e.target.closest('[data-wsave]');
+  if(wsave){
+    const id=wsave.dataset.wsave;
+    const w=weeks.find(x=>x.id===id);
+    const labelEl=document.getElementById('we_label'), startEl=document.getElementById('we_start'), endEl=document.getElementById('we_end');
+    if(w&&labelEl){ w.label=labelEl.value.trim()||w.label; }
+    if(w&&startEl&&startEl.value){ w.start=isoToSerial(startEl.value); }
+    if(w&&endEl&&endEl.value){ w.end=isoToSerial(endEl.value); }
+    editingWeekId=null; saveState(); refreshWeekSelect(); renderTracker(); return;
+  }
+  // cancel week edit
+  if(e.target.closest('[data-wcancel]')){ editingWeekId=null; renderTracker(); return; }
+  // edit task button
+  const tedit=e.target.closest('[data-tedit]');
+  if(tedit){ editingTaskId = editingTaskId===tedit.dataset.tedit ? null : tedit.dataset.tedit; renderTracker(); return; }
+  // cancel task edit
+  if(e.target.closest('[data-tcancel]')){ editingTaskId=null; renderTracker(); return; }
+  // save task edit
+  const tsave=e.target.closest('[data-tsave]');
+  if(tsave){
+    const t=tasks.find(x=>x.id===tsave.dataset.tsave);
+    if(t){
+      const nm=document.getElementById('te_name'); if(nm&&nm.value.trim()) t.name=nm.value.trim();
+      const dc=document.getElementById('te_desc'); if(dc) t.desc=dc.value.trim();
+      const ct=document.getElementById('te_cat'); if(ct) t.cat=ct.value;
+      const pr=document.getElementById('te_priority'); if(pr) t.priority=pr.value;
+      const st=document.getElementById('te_status'); if(st) t.status=st.value;
+      const wh=document.getElementById('te_who'); if(wh) t.who=wh.value.trim();
+      const wk=document.getElementById('te_week'); if(wk) t.week=wk.value;
+    }
+    editingTaskId=null; saveState(); refreshPeople(); renderTracker(); renderOverview(); return;
+  }
+  // status toggle
+  const sBtn=e.target.closest('[data-tstat]');
+  if(sBtn){ const t=tasks.find(x=>x.id===sBtn.dataset.tstat); if(t){t.status=NEXT[t.status]; saveState(); renderTracker(); renderOverview();} return; }
+  // delete
+  const del=e.target.closest('[data-tdel]');
+  if(del&&confirm("Delete this task?")){ tasks=tasks.filter(x=>x.id!==del.dataset.tdel); saveState(); refreshPeople(); renderTracker(); renderOverview(); return; }
+  // quick add
+  const qa=e.target.closest('[data-qa]');
+  if(qa){ aWeek.value=qa.dataset.qa; window.scrollTo({top:0,behavior:"smooth"}); aName.focus(); }
+});
+weeks_el.addEventListener('keydown',e=>{
+  if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains('week-head')){e.preventDefault();e.target.click();}
+});
+['fCat','fStatus','fWho'].forEach(id=>document.getElementById(id).addEventListener('change',renderTracker));
+fSearch.addEventListener('input',renderTracker);
+jumpNow.addEventListener('click',()=>{
+  const id=currentWeekId(weeks);
+  if(!openWeeks) openWeeks=new Set();
+  openWeeks.add(id); renderTracker();
+  const el=document.querySelector(`[data-week="${id}"]`);
+  if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
+});
+addForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=aName.value.trim(); if(!name) return;
+  tasks.push({id:"t"+Date.now(), week:aWeek.value, cat:aCat.value, priority:aPriority.value,
+    who:aWho.value.trim(), name, desc:aDesc.value.trim(), status:"Not Started"});
+  if(!openWeeks) openWeeks=new Set();
+  openWeeks.add(aWeek.value);
+  const keep=aWeek.value; addForm.reset(); aWeek.value=keep;
+  saveState(); refreshPeople(); renderTracker(); renderOverview();
+});
+
+/* ================= REQUIREMENTS EVENTS ================= */
+verForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const num=vNum.value.trim(), title=vTitle.value.trim(); if(!num||!title) return;
+  vers.push({id:"v"+Date.now(), ver:num, title, date:vDate.value||new Date().toISOString().slice(0,10),
+    changes:vChanges.value.split("\n").map(s=>s.trim()).filter(Boolean)});
+  verForm.reset(); saveState(); renderVers();
+});
+verList.addEventListener('click',e=>{
+  const del=e.target.closest('[data-vdel]');
+  if(del&&confirm("Delete this version?")){ vers=vers.filter(v=>v.id!==del.dataset.vdel); saveState(); renderVers(); }
+});
+docSections.addEventListener('click',e=>{
+  const h=e.target.closest('.dhead');
+  if(h){ const i=+h.parentElement.dataset.doc; openDocs.has(i)?openDocs.delete(i):openDocs.add(i); renderDoc(); }
+});
+docSections.addEventListener('keydown',e=>{
+  if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains('dhead')){e.preventDefault();e.target.click();}
+});
+
+/* ================= PLAN EVENTS ================= */
+planAddBtn.addEventListener('click',()=>openPlanEditor(null));
+gantt.addEventListener('click',e=>{ const r=e.target.closest('[data-plan]'); if(r) openPlanEditor(r.dataset.plan); });
+pCancel.addEventListener('click',closePlanEditor);
+pSave.addEventListener('click',()=>{
+  const name=pName.value.trim(); if(!name){pName.focus();return;}
+  let s=pStart.value?isoToSerial(pStart.value):todaySerial();
+  let en=pEnd.value?isoToSerial(pEnd.value):s; if(en<s) en=s;
+  const pct=Math.max(0,Math.min(100,+pPct.value||0));
+  if(editingPlanId){ const r=plan.find(x=>x.id===editingPlanId); Object.assign(r,{name,owner:pOwner.value.trim(),phase:+pPhase.value,start:s,end:en,pct,status:pStatus.value}); }
+  else { const ph=+pPhase.value; plan.push({id:"p"+Date.now(),code:ph+"."+(plan.filter(x=>x.phase===ph).length+1),phase:ph,name,owner:pOwner.value.trim(),start:s,end:en,pct,status:pStatus.value}); }
+  saveState(); closePlanEditor(); renderOverview();
+});
+pDelete.addEventListener('click',()=>{
+  if(editingPlanId&&confirm("Delete this plan task?")){ plan=plan.filter(x=>x.id!==editingPlanId); saveState(); closePlanEditor(); renderOverview(); }
+});
+
+/* ================= MILESTONE EVENTS ================= */
+mileForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=mName.value.trim(); if(!name||!mDate.value) return;
+  miles.push({id:"m"+Date.now(),name,note:mNote.value.trim(),when:isoToSerial(mDate.value),status:"Not Started"});
+  mileForm.reset(); saveState(); renderMiles(); renderOverview();
+});
+mileList.addEventListener('click',e=>{
+  const s=e.target.closest('[data-mstat]');
+  if(s){ const m=miles.find(x=>x.id===s.dataset.mstat); if(m){m.status=NEXT[m.status]; saveState(); renderMiles(); renderOverview();} return; }
+  const del=e.target.closest('[data-mdel]');
+  if(del&&confirm("Delete this milestone?")){ miles=miles.filter(x=>x.id!==del.dataset.mdel); saveState(); renderMiles(); renderOverview(); }
+});
+
+/* ================= SCREEN SWITCHING ================= */
+function showScreen(name){
+  authGate.style.display     = name==="login"    ? "flex"  : "none";
+  noAccessGate.style.display = name==="noaccess" ? "block" : "none";
+  pickerGate.style.display   = name==="picker"   ? "block" : "none";
+  appShell.style.display     = name==="app"      ? "block" : "none";
+}
+
+/* ================= LOGIN ================= */
+loginForm.addEventListener('submit', async e=>{
+  e.preventDefault();
+  loginErr.classList.remove('show');
+  try{
+    await auth.signInWithEmailAndPassword(loginEmail.value.trim(), loginPass.value);
+  }catch(err){
+    loginErr.textContent = err.message;
+    loginErr.classList.add('show');
+  }
+});
+noAccessSignOut.addEventListener('click', ()=>auth.signOut());
+pickerSignOut.addEventListener('click', ()=>auth.signOut());
+appSignOut.addEventListener('click', ()=>auth.signOut());
+
+/* ================= PROJECT PICKER ================= */
+function renderProjectPicker(){
+  pickerRoleChip.textContent = myProfile.role;
+  pickerAdminBtn.style.display = isUnrestricted() ? "" : "none";
+  const list = projectsVisibleToMe();
+  projGrid.innerHTML = list.length ? list.map(p=>`
+    <button class="proj-card" data-proj="${p.id}">
+      <h3>${esc(p.name)}</h3>
+      <span>Open project →</span>
+    </button>`).join("") : `<div class="empty">No projects assigned to you yet — ask your admin.</div>`;
+}
+projGrid.addEventListener('click', e=>{
+  const c = e.target.closest('[data-proj]');
+  if(c) openProject(c.dataset.proj);
+});
+pickerAdminBtn.addEventListener('click', enterAdminStandalone);
+backToProjects.addEventListener('click', async ()=>{
+  if(unsubProjectDoc){ unsubProjectDoc(); unsubProjectDoc=null; }
+  currentProjectId = null;
+  await fetchProjects();
+  renderProjectPicker();
+  showScreen("picker");
+});
+
+async function openProject(id){
+  const p = projectsCache.find(x=>x.id===id);
+  currentProjectId = id;
+  currentProjectName = p ? p.name : id;
+  headerProjName.textContent = currentProjectName;
+  document.querySelectorAll('.tab,.bottom-tab').forEach(b=>b.style.display="");
+  adminTabBtn.style.display = isUnrestricted() ? "" : "none";
+  adminBottomBtn.style.display = isUnrestricted() ? "" : "none";
+  permsSubtabBtn.style.display = myProfile.role==="superadmin" ? "" : "none";
+  showScreen("app");
+  await fetchPermOverride(id);
+  await loadState();
+  if(!openWeeks) openWeeks=new Set([currentWeekId(weeks),"wk1","wk2","wk3"]);
+  refreshAll();
+  const firstTab = ["tracker","reqs","plan","milestones","overview"].find(canSeeTab) || "admin";
+  switchView(firstTab);
+}
+
+async function enterAdminStandalone(){
+  if(unsubProjectDoc){ unsubProjectDoc(); unsubProjectDoc=null; }
+  currentProjectId = null;
+  headerProjName.textContent = "Admin Panel";
+  document.querySelectorAll('.tab,.bottom-tab').forEach(b=>{ b.style.display = b.dataset.v==="admin" ? "" : "none"; });
+  permsSubtabBtn.style.display = myProfile.role==="superadmin" ? "" : "none";
+  showScreen("app");
+  switchView("admin");
+}
+
+/* ================= ADMIN PANEL: subtabs ================= */
+document.querySelectorAll('.admin-subtab').forEach(b=>b.addEventListener('click', ()=>{
+  document.querySelectorAll('.admin-subtab').forEach(x=>x.classList.toggle('active', x===b));
+  document.querySelectorAll('.admin-pane').forEach(x=>x.classList.toggle('active', x.id==="ap-"+b.dataset.ap));
+  if(b.dataset.ap==="perms") renderPermMatrix();
+  if(b.dataset.ap==="users") renderUserList();
+  if(b.dataset.ap==="projects") renderProjList();
+}));
+async function renderAdminPanel(){
+  await fetchProjects();
+  renderProjList();
+  renderUserList();
+  renderPermMatrix();
+}
+
+/* ================= ADMIN PANEL: projects ================= */
+function buildDefaultProjectPayload(){
+  const w = buildDefaultWeeks();
+  return {weeks:w, tasks:[], plan:[], miles:[], vers:[], openWeeks:[currentWeekId(w)]};
+}
+newProjBtn.addEventListener('click', async ()=>{
+  const name = newProjName.value.trim(); if(!name) return;
+  const ref = await db.collection("projects").add({name, createdAt:Date.now(), archived:false});
+  await db.doc("projects/"+ref.id+"/data/main").set(buildDefaultProjectPayload());
+  newProjName.value="";
+  await fetchProjects(); renderProjList(); renderProjectPicker();
+});
+function renderProjList(){
+  projList.innerHTML = projectsCache.map(p=>`
+    <div class="proj-row">
+      <input type="text" data-pname="${p.id}" value="${esc(p.name)}" style="flex:1;min-width:140px">
+      <button class="btn secondary" data-prename="${p.id}">Rename</button>
+      <button class="btn danger" data-parchive="${p.id}">Archive</button>
+    </div>`).join("") || `<div class="empty">No projects yet.</div>`;
+}
+projList.addEventListener('click', async e=>{
+  const ren = e.target.closest('[data-prename]');
+  if(ren){
+    const id = ren.dataset.prename;
+    const input = projList.querySelector(`[data-pname="${id}"]`);
+    const name = input.value.trim(); if(!name) return;
+    await db.doc("projects/"+id).update({name});
+    await fetchProjects(); renderProjList(); renderProjectPicker();
+    if(id===currentProjectId) headerProjName.textContent = name;
+    return;
+  }
+  const arch = e.target.closest('[data-parchive]');
+  if(arch && confirm("Archive this project? It will be hidden from the picker.")){
+    await db.doc("projects/"+arch.dataset.parchive).update({archived:true});
+    await fetchProjects(); renderProjList(); renderProjectPicker();
+  }
+});
+
+/* ================= ADMIN PANEL: users ================= */
+newUserBtn.addEventListener('click', async ()=>{
+  newUserErr.classList.remove('show');
+  const email=newUserEmail.value.trim(), pass=newUserPass.value, role=newUserRole.value;
+  if(!email || pass.length<6){
+    newUserErr.textContent = "Enter an email and a password of at least 6 characters.";
+    newUserErr.classList.add('show');
+    return;
+  }
+  try{
+    const sAuth = getSecondaryAuth();
+    const cred = await sAuth.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+    await sAuth.signOut();
+    await db.doc("users/"+uid).set({email, name:"", role, projects:[]});
+    newUserEmail.value=""; newUserPass.value="";
+    await renderUserList();
+  }catch(e){
+    newUserErr.textContent = e.message;
+    newUserErr.classList.add('show');
+  }
+});
+async function renderUserList(){
+  const snap = await db.collection("users").get();
+  usersCache = snap.docs.map(d=>({uid:d.id, ...d.data()}));
+  userList.innerHTML = usersCache.map(u=>`
+    <div class="user-row" data-uid="${u.uid}">
+      <span class="u-email">${esc(u.email)}</span>
+      <select data-urole="${u.uid}">
+        <option value="developer"${u.role==="developer"?" selected":""}>Developer</option>
+        <option value="client"${u.role==="client"?" selected":""}>Client</option>
+        <option value="admin"${u.role==="admin"?" selected":""}>Admin</option>
+        <option value="superadmin"${u.role==="superadmin"?" selected":""}>Super Admin</option>
+      </select>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${projectsCache.map(p=>`<label class="chip-check"><input type="checkbox" data-uproj="${u.uid}|${p.id}"${((u.projects||[]).includes(p.id))?" checked":""}> ${esc(p.name)}</label>`).join("")}
+      </div>
+    </div>`).join("") || `<div class="empty">No users yet.</div>`;
+}
+userList.addEventListener('change', async e=>{
+  const roleSel = e.target.closest('[data-urole]');
+  if(roleSel){ await db.doc("users/"+roleSel.dataset.urole).update({role:roleSel.value}); return; }
+  const projChk = e.target.closest('[data-uproj]');
+  if(projChk){
+    const [uid,pid] = projChk.dataset.uproj.split("|");
+    const u = usersCache.find(x=>x.uid===uid);
+    const projects = new Set(u.projects||[]);
+    projChk.checked ? projects.add(pid) : projects.delete(pid);
+    await db.doc("users/"+uid).update({projects:[...projects]});
+    u.projects = [...projects];
+  }
+});
+
+/* ================= ADMIN PANEL: permissions ================= */
+function permRowsHtml(bucketGetter, prefix){
+  let html = `<table class="perm-table"><thead><tr><th>Item</th><th>Developer</th><th>Client</th></tr></thead><tbody>`;
+  html += `<tr><td colspan="3" style="font-weight:600;background:#F7F6F2">Screens (tabs)</td></tr>`;
+  TAB_KEYS.forEach(k=>{
+    html += `<tr><td>${TAB_LABELS[k]}</td>
+      <td><input type="checkbox" data-${prefix}-tab="developer|${k}"${bucketGetter("developer").tabs[k]?" checked":""}></td>
+      <td><input type="checkbox" data-${prefix}-tab="client|${k}"${bucketGetter("client").tabs[k]?" checked":""}></td></tr>`;
+  });
+  html += `<tr><td colspan="3" style="font-weight:600;background:#F7F6F2">Fields</td></tr>`;
+  FIELD_KEYS.forEach(k=>{
+    html += `<tr><td>${FIELD_LABELS[k]}</td>
+      <td><input type="checkbox" data-${prefix}-field="developer|${k}"${bucketGetter("developer").fields[k]?" checked":""}></td>
+      <td><input type="checkbox" data-${prefix}-field="client|${k}"${bucketGetter("client").fields[k]?" checked":""}></td></tr>`;
+  });
+  html += `</tbody></table>`;
+  return html;
+}
+function renderPermMatrix(){
+  permMatrix.innerHTML = permRowsHtml(role=>permDefault[role], "def");
+  const showOverride = isUnrestricted() && currentProjectId;
+  permOverrideCard.style.display = showOverride ? "" : "none";
+  if(showOverride){
+    permOverrideToggle.checked = permOverrideEnabled;
+    const overrideSource = role => (permOverride || defaultPermMatrix())[role];
+    permMatrixOverride.innerHTML = permRowsHtml(overrideSource, "ov");
+  }
+}
+permMatrix.addEventListener('change', e=>{
+  const t = e.target.closest('[data-def-tab]');
+  if(t){ const [role,key]=t.dataset.defTab.split("|"); permDefault[role].tabs[key]=t.checked; }
+  const f = e.target.closest('[data-def-field]');
+  if(f){ const [role,key]=f.dataset.defField.split("|"); permDefault[role].fields[key]=f.checked; }
+});
+permSaveBtn.addEventListener('click', async ()=>{
+  await db.doc("permissions/matrix").set(permDefault);
+  note("Default permissions saved");
+  if(!permOverrideEnabled) refreshAll();
+});
+permMatrixOverride.addEventListener('change', e=>{
+  if(!permOverride) permOverride = {developer:defaultPermBucket("developer"), client:defaultPermBucket("client")};
+  const t = e.target.closest('[data-ov-tab]');
+  if(t){ const [role,key]=t.dataset.ovTab.split("|"); permOverride[role].tabs[key]=t.checked; }
+  const f = e.target.closest('[data-ov-field]');
+  if(f){ const [role,key]=f.dataset.ovField.split("|"); permOverride[role].fields[key]=f.checked; }
+});
+permOverrideToggle.addEventListener('change', ()=>{
+  permOverrideEnabled = permOverrideToggle.checked;
+  if(permOverrideEnabled && !permOverride) permOverride = {developer:defaultPermBucket("developer"), client:defaultPermBucket("client")};
+});
+permOverrideSaveBtn.addEventListener('click', async ()=>{
+  if(!currentProjectId) return;
+  const base = permOverride || {developer:defaultPermBucket("developer"), client:defaultPermBucket("client")};
+  await db.doc("projectPermOverrides/"+currentProjectId).set(Object.assign({enabled:permOverrideEnabled}, base));
+  await fetchPermOverride(currentProjectId);
+  refreshAll();
+  note("Project permission override saved");
+});
+
+/* ================= INIT ================= */
+initFirebase();
+auth.onAuthStateChanged(async user=>{
+  currentUser = user;
+  if(!user){ myProfile=null; showScreen("login"); return; }
+  try{
+    myProfile = await fetchMyProfile(user.uid);
+  }catch(e){
+    console.error("Could not load user profile:", e.message);
+    myProfile = null;
+  }
+  if(!myProfile){ showScreen("noaccess"); return; }
+  await fetchPermDefault();
+  await migrateLegacyIfNeeded();
+  await fetchProjects();
+  renderProjectPicker();
+  showScreen("picker");
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root{
+  --bg:#F5F5FA; --panel:#FFFFFF; --panel-2:#FAFAFD; --ink:#15161E; --muted:#6B6F80; --line:#E7E7F0;
+
+  --accent:#4F46E5; --accent-soft:#EEF0FE; --accent-ring:#C7C9FB;
+  --green:#16A34A; --green-soft:#E9F9EE;
+  --amber:#D97706; --amber-soft:#FEF3E2;
+  --grey-soft:#EFEFF4;
+  --red:#DC2626; --red-soft:#FDECEC;
+  --blue:#2563EB; --blue-soft:#EAF1FE;
+  --purple:#7C3AED; --purple-soft:#F3ECFE;
+
+  --shadow-sm: 0 1px 2px rgba(20,20,43,.04), 0 1px 1px rgba(20,20,43,.03);
+  --shadow-md: 0 8px 24px -8px rgba(20,20,43,.12), 0 2px 6px -2px rgba(20,20,43,.06);
+}
+
+/* Always light mode, regardless of OS/browser theme preference. */
+:root{ color-scheme: light; }
+
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  background:
+    radial-gradient(1200px 480px at 15% -10%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:'Inter',system-ui,sans-serif;
+  margin:0;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.brand,.font-display{font-family:'Space Grotesk',sans-serif;letter-spacing:-.01em}
+
+::selection{background:var(--accent-soft);color:var(--accent)}
+
+input,select,textarea{font-family:inherit;font-size:14px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{
+  outline:2px solid var(--accent-ring);outline-offset:2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar{height:8px;width:8px}
+.scrollbar-thin::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
