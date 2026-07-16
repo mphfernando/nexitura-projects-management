@@ -101,7 +101,7 @@ export default function ProjectShell({ project, onBackToProjects, onOpenAdmin })
             {activeTab === "milestones" && <Milestones project={project} data={data} update={update} />}
             {activeTab === "overview" && <Overview data={data} showProg={fieldOK("progress")} showDev={fieldOK("developerNames")} />}
             {activeTab === "activity" && <Activity projectId={project.id} />}
-            {activeTab === "bugs" && <Bugs project={project} update={update} />}
+            {activeTab === "bugs" && <Bugs project={project} data={data} update={update} />}
           </>
         )}
       </main>

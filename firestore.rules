@@ -43,12 +43,13 @@ service cloud.firestore {
         allow write: if hasProjectAccess(projectId);
       }
 
-      // Bug reports (mainly from Clients). Anyone with project access can
-      // read/file one; only Admin/Super Admin can update status (e.g. once
-      // it's been added to the Tracker).
+      // Bug reports (from Clients). Anyone with project access can file
+      // one; only the reporter can read their own, and only Super Admin
+      // can read the full list / triage (update status, link to a task).
       match /bugReports/{reportId} {
-        allow read, create: if hasProjectAccess(projectId);
-        allow update: if isAdmin();
+        allow create: if hasProjectAccess(projectId);
+        allow read: if isSuperAdmin() || (signedIn() && resource.data.reportedByUid == request.auth.uid);
+        allow update: if isSuperAdmin();
         allow delete: if false;
       }
     }
