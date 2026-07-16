@@ -4,10 +4,15 @@ import { db, getSecondaryAuth, createUserWithEmailAndPassword, signOut } from ".
 import { useAppState } from "../../hooks/useAppState.jsx";
 import { Btn, Input, Select, Card, EmptyState } from "../../components/ui.jsx";
 
+const ROLE_LABELS = { developer: "Developer", client: "Client", admin: "Admin", superadmin: "Super Admin" };
+// Only these roles can be assigned tasks by name — admins/superadmins manage
+// the system, they aren't "assignees" of project work.
+const ASSIGNABLE_ROLES = ["developer", "client"];
+
 export default function UsersPane() {
   const { projects } = useAppState();
   const [users, setUsers] = useState(null);
-  const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [role, setRole] = useState("developer");
+  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pass, setPass] = useState(""); const [role, setRole] = useState("developer");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -22,16 +27,21 @@ export default function UsersPane() {
   useEffect(() => { load(); }, [load]);
 
   // Keeps projects/{id}.members in sync so project screens can list assignable
-  // people (with real emails, for notifications) without needing to list /users.
+  // people (with real names/emails, for notifications) without needing to
+  // list /users. Only Developer/Client accounts are assignable.
   async function syncProjectMembers(projectId, allUsers) {
     const members = allUsers
-      .filter(u => (u.projects || []).includes(projectId))
+      .filter(u => (u.projects || []).includes(projectId) && ASSIGNABLE_ROLES.includes(u.role))
       .map(u => ({ uid: u.uid, name: u.name || u.email, email: u.email }));
     await updateDoc(doc(db, "projects", projectId), { members });
+  }
+  async function syncAllProjectsFor(u, updatedUsers) {
+    await Promise.all((u.projects || []).map(pid => syncProjectMembers(pid, updatedUsers)));
   }
 
   async function createUser() {
     setErr("");
+    if (!name.trim()) { setErr("Enter their name."); return; }
     if (!email.trim() || pass.length < 6) { setErr("Enter an email and a password of at least 6 characters."); return; }
     setBusy(true);
     try {
@@ -39,23 +49,26 @@ export default function UsersPane() {
       const cred = await createUserWithEmailAndPassword(sAuth, email.trim(), pass);
       const uid = cred.user.uid;
       await signOut(sAuth);
-      await setDoc(doc(db, "users", uid), { email: email.trim(), name: "", role, projects: [] });
-      setEmail(""); setPass("");
+      await setDoc(doc(db, "users", uid), { email: email.trim(), name: name.trim(), role, projects: [] });
+      setName(""); setEmail(""); setPass("");
       await load();
     } catch (e) {
       setErr(e.message);
     } finally { setBusy(false); }
   }
-  async function changeRole(uid, newRole) {
-    await updateDoc(doc(db, "users", uid), { role: newRole });
-    await load();
-  }
-  async function changeName(uid, newName) {
-    await updateDoc(doc(db, "users", uid), { name: newName });
-    const updated = users.map(x => x.uid === uid ? { ...x, name: newName } : x);
+  async function changeRole(u, newRole) {
+    await updateDoc(doc(db, "users", u.uid), { role: newRole });
+    const updated = users.map(x => x.uid === u.uid ? { ...x, role: newRole } : x);
     setUsers(updated);
-    const u = updated.find(x => x.uid === uid);
-    await Promise.all((u.projects || []).map(pid => syncProjectMembers(pid, updated)));
+    // role change affects assignability everywhere they're a member
+    await syncAllProjectsFor({ ...u, role: newRole }, updated);
+  }
+  async function changeName(u, newName) {
+    if (newName === (u.name || "")) return;
+    await updateDoc(doc(db, "users", u.uid), { name: newName });
+    const updated = users.map(x => x.uid === u.uid ? { ...x, name: newName } : x);
+    setUsers(updated);
+    await syncAllProjectsFor(u, updated);
   }
   async function toggleProject(u, pid, checked) {
     const projectsList = new Set(u.projects || []);
@@ -73,13 +86,11 @@ export default function UsersPane() {
         <h2 className="font-bold text-[15px] mb-1.5">＋ Add user</h2>
         <p className="text-xs text-[var(--muted)] mb-3">Creates a real sign-in account. The person can sign in immediately with this email/password.</p>
         <div className="flex flex-wrap gap-2 items-center">
+          <Input className="min-w-[140px]" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
           <Input className="min-w-[180px]" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
           <Input className="min-w-[160px]" type="password" placeholder="Temporary password" value={pass} onChange={e => setPass(e.target.value)} />
           <Select className="!w-auto" value={role} onChange={e => setRole(e.target.value)}>
-            <option value="developer">Developer</option>
-            <option value="client">Client</option>
-            <option value="admin">Admin</option>
-            <option value="superadmin">Super Admin</option>
+            {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </Select>
           <Btn onClick={createUser} disabled={busy}>Create user</Btn>
         </div>
@@ -87,30 +98,42 @@ export default function UsersPane() {
       </Card>
 
       <Card>
-        <h2 className="font-bold text-[15px] mb-3">All users</h2>
+        <h2 className="font-bold text-[15px] mb-1.5">All users</h2>
+        <p className="text-xs text-[var(--muted)] mb-3">Only Developer and Client accounts can be assigned tasks by name in a project's Weekly Tracker.</p>
         {users === null ? (
           <EmptyState>Loading…</EmptyState>
         ) : users.length === 0 ? (
           <EmptyState>No users yet.</EmptyState>
         ) : (
-          <div className="divide-y divide-dashed divide-[var(--line)]">
+          <div className="space-y-3">
             {users.map(u => (
-              <div key={u.uid} className="flex flex-wrap gap-2.5 items-center py-2.5 first:pt-0">
-                <Input className="w-36" placeholder="Name" defaultValue={u.name} onBlur={e => e.target.value.trim() !== (u.name || "") && changeName(u.uid, e.target.value.trim())} />
-                <span className="flex-1 min-w-[150px] text-sm text-[var(--muted)]">{u.email}</span>
-                <Select className="!w-auto min-w-[120px]" value={u.role} onChange={e => changeRole(u.uid, e.target.value)}>
-                  <option value="developer">Developer</option>
-                  <option value="client">Client</option>
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Super Admin</option>
-                </Select>
-                <div className="flex flex-wrap gap-1.5">
-                  {projects.map(p => (
-                    <label key={p.id} className="inline-flex items-center gap-1 text-xs bg-[var(--grey-soft)] px-2 py-1 rounded-full">
-                      <input type="checkbox" checked={(u.projects || []).includes(p.id)} onChange={e => toggleProject(u, p.id, e.target.checked)} />
-                      {p.name}
-                    </label>
-                  ))}
+              <div key={u.uid} className="border border-[var(--line)] rounded-xl p-3.5">
+                <div className="flex flex-wrap gap-2.5 items-center mb-2.5">
+                  <Input className="w-40" placeholder="Name" defaultValue={u.name} onBlur={e => changeName(u, e.target.value.trim())} />
+                  <div className="flex flex-col min-w-[160px]">
+                    <span className="text-sm">{u.email}</span>
+                  </div>
+                  <Select className="!w-auto min-w-[130px] ml-auto" value={u.role} onChange={e => changeRole(u, e.target.value)}>
+                    {Object.entries(ROLE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </Select>
+                </div>
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)] block mb-1.5">Project access</span>
+                  {projects.length === 0 ? (
+                    <span className="text-xs text-[var(--muted)]">No projects exist yet.</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {projects.map(p => {
+                        const checked = (u.projects || []).includes(p.id);
+                        return (
+                          <label key={p.id} className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full cursor-pointer transition-colors ${checked ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "bg-[var(--grey-soft)] text-[var(--muted)]"}`}>
+                            <input type="checkbox" className="w-3.5 h-3.5" checked={checked} onChange={e => toggleProject(u, p.id, e.target.checked)} />
+                            {p.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
