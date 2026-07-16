@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { currentWeekId, weekRange, isoToSerial, serialToISO } from "../lib/dates.js";
 import { stTone, prTone, catTone, catShort, NEXT_STATUS, prBorderColor } from "../lib/badges.js";
 import { notifyAssignment } from "../lib/notify.js";
@@ -6,7 +6,7 @@ import { logActivity } from "../lib/activity.js";
 import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Select, Textarea, FieldLabel, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
-export default function Tracker({ project, data, update, showDev, showProg, canAdd }) {
+export default function Tracker({ project, data, update, showDev, showProg, canAdd, canEditTask, canDeleteTask, canEditWeek, focusTaskId, focusWeekId, focusNonce }) {
   const { profile } = useAppState();
   const { weeks, tasks } = data;
   const members = project.members || [];
@@ -30,8 +30,27 @@ export default function Tracker({ project, data, update, showDev, showProg, canA
     const m = memberByUid(task.whoUid);
     if (!m) return;
     const week = weeks.find(w => w.id === weekId);
-    notifyAssignment({ toUid: m.uid, projectId: project.id, projectName: project.name, taskName: task.name, weekLabel: week ? week.label : "" });
+    notifyAssignment({ toUid: m.uid, projectId: project.id, projectName: project.name, taskName: task.name, taskId: task.id, weekId, weekLabel: week ? week.label : "" });
   }
+
+  // Jumping here from a notification: open the task's week, scroll to it,
+  // and give it a brief highlight flash so it's obvious what you were sent to see.
+  useEffect(() => {
+    const wantedWeek = focusWeekId || (focusTaskId ? tasks.find(t => t.id === focusTaskId)?.week : null);
+    if (!wantedWeek) return;
+    setOpenWeeks(prev => new Set(prev).add(wantedWeek));
+    const t = setTimeout(() => {
+      const selector = focusTaskId ? `[data-task="${focusTaskId}"]` : `[data-week="${wantedWeek}"]`;
+      const el = document.querySelector(selector);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flash-highlight");
+        setTimeout(() => el.classList.remove("flash-highlight"), 2000);
+      }
+    }, 350); // let the week's collapse animation open first
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce]);
 
   function toggleWeekOpen(id) {
     setOpenWeeks(prev => {
@@ -62,7 +81,7 @@ export default function Tracker({ project, data, update, showDev, showProg, canA
     const prevTask = tasks.find(t => t.id === taskId);
     const patch = { name: form.name, desc: form.desc, cat: form.cat, priority: form.priority, status: form.status, week: form.week, whoUid: form.whoUid, who: m ? m.name : "", whoEmail: m ? m.email : "" };
     update(d => ({ ...d, tasks: d.tasks.map(t => t.id === taskId ? { ...t, ...patch } : t) }));
-    if (form.whoUid && form.whoUid !== prevTask?.whoUid) notifyIfAssigned(patch, form.week);
+    if (form.whoUid && form.whoUid !== prevTask?.whoUid) notifyIfAssigned({ ...patch, id: taskId }, form.week);
     log("task edited", patch.name);
     setEditingTaskId(null);
   }
@@ -192,6 +211,7 @@ export default function Tracker({ project, data, update, showDev, showProg, canA
               onSaveWeek={(label, start, end) => saveWeekEdit(w.id, label, start, end)}
               onCycleStatus={cycleStatus} onDeleteTask={deleteTask} onSaveTask={saveTaskEdit}
               showDev={showDev} weeks={weeks} members={members} canAdd={canAdd}
+              canEditTask={canEditTask} canDeleteTask={canDeleteTask} canEditWeek={canEditWeek}
               onQuickAdd={() => { setAddWeek(w.id); setMobileSheetOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             />
           );
@@ -201,7 +221,7 @@ export default function Tracker({ project, data, update, showDev, showProg, canA
   );
 }
 
-function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks, members, canAdd, editingWeekId, setEditingWeekId, editingTaskId, setEditingTaskId, onToggleOpen, onSaveWeek, onCycleStatus, onDeleteTask, onSaveTask, onQuickAdd }) {
+function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks, members, canAdd, canEditTask, canDeleteTask, canEditWeek, editingWeekId, setEditingWeekId, editingTaskId, setEditingTaskId, onToggleOpen, onSaveWeek, onCycleStatus, onDeleteTask, onSaveTask, onQuickAdd }) {
   const isEditingW = editingWeekId === w.id;
   const [label, setLabel] = useState(w.label);
   const [start, setStart] = useState(serialToISO(w.start));
@@ -216,7 +236,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
         <span className="text-[11.5px] text-[var(--muted)] flex-1 min-w-0 truncate">{weekRange(w)}</span>
         {isNow && <span className="bg-[var(--accent)] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">NOW</span>}
         {showProg && <span className="text-[11.5px] text-[var(--muted)] tabular-nums">{done}/{all.length}</span>}
-        <button onClick={e => { e.stopPropagation(); setEditingWeekId(isEditingW ? null : w.id); }} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] text-xs rounded-md px-1.5 py-1">✎</button>
+        {canEditWeek && <button onClick={e => { e.stopPropagation(); setEditingWeekId(isEditingW ? null : w.id); }} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] text-xs rounded-md px-1.5 py-1">✎</button>}
         {showProg && all.length > 0 && (
           <div className="absolute left-0 right-0 bottom-0 h-[3px] bg-[var(--line)]">
             <div className="h-full bg-[var(--green)] transition-all" style={{ width: pct + "%" }} />
@@ -257,6 +277,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
                   <tbody>
                     {rows.map(t => (
                       <TaskRow key={t.id} t={t} showDev={showDev} weeks={weeks} members={members}
+                        canEditTask={canEditTask} canDeleteTask={canDeleteTask}
                         editing={editingTaskId === t.id}
                         onEdit={() => setEditingTaskId(editingTaskId === t.id ? null : t.id)}
                         onCycleStatus={() => onCycleStatus(t.id)} onDelete={() => onDeleteTask(t.id)}
@@ -268,6 +289,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
               <div className="md:hidden divide-y divide-[var(--line)]">
                 {rows.map(t => (
                   <TaskCard key={t.id} t={t} showDev={showDev} weeks={weeks} members={members}
+                    canEditTask={canEditTask} canDeleteTask={canDeleteTask}
                     editing={editingTaskId === t.id}
                     onEdit={() => setEditingTaskId(editingTaskId === t.id ? null : t.id)}
                     onCycleStatus={() => onCycleStatus(t.id)} onDelete={() => onDeleteTask(t.id)}
@@ -283,7 +305,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
   );
 }
 
-function TaskEditPanel({ t, weeks, members, onSave, onCancel, onDelete }) {
+function TaskEditPanel({ t, weeks, members, onSave, onCancel, onDelete, canDeleteTask }) {
   const [f, setF] = useState({ name: t.name, desc: t.desc || "", cat: t.cat, priority: t.priority, status: t.status, whoUid: t.whoUid || "", week: t.week });
   return (
     <div className="anim-slide-down bg-[var(--accent-soft)] p-3 grid gap-2" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
@@ -302,39 +324,39 @@ function TaskEditPanel({ t, weeks, members, onSave, onCancel, onDelete }) {
       <div className="col-span-full flex gap-1.5">
         <Btn onClick={() => onSave(f)}>Save</Btn>
         <Btn variant="secondary" onClick={onCancel}>Cancel</Btn>
-        <Btn variant="danger" className="ml-auto" onClick={onDelete}>Delete</Btn>
+        {canDeleteTask && <Btn variant="danger" className="ml-auto" onClick={onDelete}>Delete</Btn>}
       </div>
     </div>
   );
 }
 
-function TaskRow({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, onDelete, onSave, onCancel }) {
+function TaskRow({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, onDelete, onSave, onCancel, canEditTask, canDeleteTask }) {
   const done = t.status === "Completed";
   return (
     <>
-      <tr className={`${editing ? "bg-[var(--accent-soft)]" : ""} ${done ? "opacity-60" : ""}`} style={{ boxShadow: `inset 3px 0 0 0 ${prBorderColor(t.priority)}` }}>
+      <tr data-task={t.id} className={`${editing ? "bg-[var(--accent-soft)]" : ""} ${done ? "opacity-60" : ""}`} style={{ boxShadow: `inset 3px 0 0 0 ${prBorderColor(t.priority)}` }}>
         <td className="px-3 py-2.5 border-t border-[var(--line)] align-top"><Badge tone={catTone(t.cat)}>{catShort(t.cat)}</Badge></td>
         <td className="px-3 py-2.5 border-t border-[var(--line)] align-top">
           <div>{t.name}</div>
           {t.desc && <div className="text-[var(--muted)] text-xs mt-0.5">{t.desc}</div>}
         </td>
         {showDev && <td className="px-3 py-2.5 border-t border-[var(--line)] align-top">{t.who || "—"}</td>}
-        <td className="px-3 py-2.5 border-t border-[var(--line)] align-top"><Badge tone={stTone(t.status)} onClick={onCycleStatus}>{t.status}</Badge></td>
+        <td className="px-3 py-2.5 border-t border-[var(--line)] align-top"><Badge tone={stTone(t.status)} onClick={canEditTask ? onCycleStatus : undefined}>{t.status}</Badge></td>
         <td className="px-3 py-2.5 border-t border-[var(--line)] align-top"><Badge tone={prTone(t.priority)}>{t.priority}</Badge></td>
         <td className="px-3 py-2.5 border-t border-[var(--line)] align-top whitespace-nowrap">
-          <button onClick={onEdit} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] rounded-md px-1.5 py-1 text-xs">✎</button>
-          <button onClick={onDelete} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2 py-1 text-base leading-none">×</button>
+          {canEditTask && <button onClick={onEdit} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] rounded-md px-1.5 py-1 text-xs">✎</button>}
+          {canDeleteTask && <button onClick={onDelete} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2 py-1 text-base leading-none">×</button>}
         </td>
       </tr>
-      {editing && <tr><td colSpan={showDev ? 6 : 5} className="p-0"><TaskEditPanel t={t} weeks={weeks} members={members} onSave={onSave} onCancel={onCancel} onDelete={onDelete} /></td></tr>}
+      {editing && <tr><td colSpan={showDev ? 6 : 5} className="p-0"><TaskEditPanel t={t} weeks={weeks} members={members} onSave={onSave} onCancel={onCancel} onDelete={onDelete} canDeleteTask={canDeleteTask} /></td></tr>}
     </>
   );
 }
 
-function TaskCard({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, onDelete, onSave, onCancel }) {
+function TaskCard({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, onDelete, onSave, onCancel, canEditTask, canDeleteTask }) {
   const done = t.status === "Completed";
   return (
-    <div className={`p-3.5 ${done ? "opacity-60" : ""}`} style={{ boxShadow: `inset 3px 0 0 0 ${prBorderColor(t.priority)}` }}>
+    <div data-task={t.id} className={`p-3.5 ${done ? "opacity-60" : ""}`} style={{ boxShadow: `inset 3px 0 0 0 ${prBorderColor(t.priority)}` }}>
       <div className="flex gap-1.5 flex-wrap items-center mb-1.5">
         <Badge tone={catTone(t.cat)}>{catShort(t.cat)}</Badge>
         <Badge tone={prTone(t.priority)}>{t.priority}</Badge>
@@ -343,13 +365,13 @@ function TaskCard({ t, showDev, weeks, members, editing, onEdit, onCycleStatus, 
       <div className="text-[13.5px] font-medium mb-0.5">{t.name}</div>
       {t.desc && <div className="text-xs text-[var(--muted)] mb-2">{t.desc}</div>}
       <div className="flex gap-1.5 flex-wrap items-center">
-        <Badge tone={stTone(t.status)} onClick={onCycleStatus} className="!px-3.5 !py-2 text-[12px]">{t.status}</Badge>
+        <Badge tone={stTone(t.status)} onClick={canEditTask ? onCycleStatus : undefined} className="!px-3.5 !py-2 text-[12px]">{t.status}</Badge>
         <div className="ml-auto flex gap-1 items-center">
-          <button onClick={onEdit} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] rounded-md px-2.5 py-2 text-sm font-semibold">✎</button>
-          <button onClick={onDelete} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2.5 py-2 text-lg leading-none">×</button>
+          {canEditTask && <button onClick={onEdit} className="text-[var(--muted)] hover:bg-[var(--grey-soft)] hover:text-[var(--ink)] rounded-md px-2.5 py-2 text-sm font-semibold">✎</button>}
+          {canDeleteTask && <button onClick={onDelete} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2.5 py-2 text-lg leading-none">×</button>}
         </div>
       </div>
-      {editing && <div className="mt-3"><TaskEditPanel t={t} weeks={weeks} members={members} onSave={onSave} onCancel={onCancel} onDelete={onDelete} /></div>}
+      {editing && <div className="mt-3"><TaskEditPanel t={t} weeks={weeks} members={members} onSave={onSave} onCancel={onCancel} onDelete={onDelete} canDeleteTask={canDeleteTask} /></div>}
     </div>
   );
 }

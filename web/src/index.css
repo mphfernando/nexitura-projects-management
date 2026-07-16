@@ -50,3 +50,11 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .collapse-rows{ display:grid; transition: grid-template-rows .28s ease; grid-template-rows: 0fr; }
 .collapse-rows.open{ grid-template-rows: 1fr; }
 .collapse-inner{ overflow:hidden; min-height:0; }
+
+/* Briefly pulses a background to draw the eye to whatever a notification
+   click scrolled to (a task row/card, a bug report entry). */
+@keyframes flashHighlight{
+  0%{ background-color: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent-ring); }
+  100%{ background-color: transparent; box-shadow: 0 0 0 2px transparent; }
+}
+.flash-highlight{ animation: flashHighlight 2s ease-out; border-radius: 10px; }

@@ -1,13 +1,50 @@
 export const TAB_KEYS = ["tracker", "reqs", "plan", "milestones", "overview", "activity", "bugs"];
 export const TAB_LABELS = { tracker: "Weekly Tracker", reqs: "Requirements", plan: "Project Plan", milestones: "Milestones", overview: "Overview", activity: "Activity", bugs: "Report Bug" };
-export const FIELD_KEYS = ["developerNames", "progress", "addTask"];
-export const FIELD_LABELS = { developerNames: "Developer / assignee names", progress: "Progress indicators (% complete, done counts, overview metrics)", addTask: "Add new tasks (Weekly Tracker)" };
+
+export const FIELD_KEYS = [
+  "developerNames", "progress",
+  "addTask", "editTask", "deleteTask", "editWeek",
+  "addMilestone", "editMilestone", "deleteMilestone",
+  "addPlanTask", "editPlanTask", "deletePlanTask",
+  "addVersion", "deleteVersion",
+];
+export const FIELD_LABELS = {
+  developerNames: "Developer / assignee names",
+  progress: "Progress indicators (% complete, done counts, overview metrics)",
+  addTask: "Add new tasks",
+  editTask: "Edit tasks",
+  deleteTask: "Delete tasks",
+  editWeek: "Rename weeks / change dates",
+  addMilestone: "Add milestones",
+  editMilestone: "Edit milestone status",
+  deleteMilestone: "Delete milestones",
+  addPlanTask: "Add plan tasks",
+  editPlanTask: "Edit plan tasks",
+  deletePlanTask: "Delete plan tasks",
+  addVersion: "Add requirement versions",
+  deleteVersion: "Delete requirement versions",
+};
+// Purely for organizing the Permissions matrix UI into readable sections.
+export const FIELD_GROUPS = [
+  { label: "General", keys: ["developerNames", "progress"] },
+  { label: "Weekly Tracker", keys: ["addTask", "editTask", "deleteTask", "editWeek"] },
+  { label: "Milestones", keys: ["addMilestone", "editMilestone", "deleteMilestone"] },
+  { label: "Project Plan", keys: ["addPlanTask", "editPlanTask", "deletePlanTask"] },
+  { label: "Requirements", keys: ["addVersion", "deleteVersion"] },
+];
 export const GOVERNED_ROLES = ["developer", "client"];
 
 export function defaultPermBucket(role) {
+  const editorDefault = role !== "client"; // Clients report via Bugs, they don't edit project content directly.
   return {
     tabs: { tracker: true, reqs: true, plan: true, milestones: role !== "client", overview: true, activity: false, bugs: true },
-    fields: { developerNames: role !== "client", progress: true, addTask: role !== "client" },
+    fields: {
+      developerNames: role !== "client", progress: true,
+      addTask: editorDefault, editTask: editorDefault, deleteTask: editorDefault, editWeek: editorDefault,
+      addMilestone: editorDefault, editMilestone: editorDefault, deleteMilestone: editorDefault,
+      addPlanTask: editorDefault, editPlanTask: editorDefault, deletePlanTask: editorDefault,
+      addVersion: editorDefault, deleteVersion: editorDefault,
+    },
   };
 }
 export function defaultPermMatrix() {

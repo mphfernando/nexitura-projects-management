@@ -4,7 +4,7 @@ import { logActivity } from "../lib/activity.js";
 import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Textarea, FieldLabel, Card, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
-export default function Requirements({ project, data, update }) {
+export default function Requirements({ project, data, update, canAdd, canDelete }) {
   const { profile } = useAppState();
   const { vers } = data;
   const [openDocs, setOpenDocs] = useState(() => new Set([0]));
@@ -37,16 +37,18 @@ export default function Requirements({ project, data, update }) {
 
   return (
     <div>
-      <div className="bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--purple)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-4.5">
-        <h2 className="text-sm font-bold text-[var(--purple)] mb-3">＋ Add a requirements version</h2>
-        <form onSubmit={submit} className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
-          <div><FieldLabel>Version</FieldLabel><Input required value={f.num} onChange={e => setF(v => ({ ...v, num: e.target.value }))} placeholder="e.g. 1.2" /></div>
-          <div><FieldLabel>Title</FieldLabel><Input required value={f.title} onChange={e => setF(v => ({ ...v, title: e.target.value }))} placeholder="e.g. Client feedback round 2" /></div>
-          <div><FieldLabel>Date</FieldLabel><Input type="date" value={f.date} onChange={e => setF(v => ({ ...v, date: e.target.value }))} /></div>
-          <div className="col-span-full"><FieldLabel>Changes / new requirements (one per line)</FieldLabel><Textarea rows={3} value={f.changes} onChange={e => setF(v => ({ ...v, changes: e.target.value }))} placeholder="e.g. Buyer app: add loyalty points screen" /></div>
-          <div className="col-span-full"><Btn type="submit" className="bg-[var(--purple)]">Add version</Btn></div>
-        </form>
-      </div>
+      {canAdd && (
+        <div className="bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--purple)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-4.5">
+          <h2 className="text-sm font-bold text-[var(--purple)] mb-3">＋ Add a requirements version</h2>
+          <form onSubmit={submit} className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
+            <div><FieldLabel>Version</FieldLabel><Input required value={f.num} onChange={e => setF(v => ({ ...v, num: e.target.value }))} placeholder="e.g. 1.2" /></div>
+            <div><FieldLabel>Title</FieldLabel><Input required value={f.title} onChange={e => setF(v => ({ ...v, title: e.target.value }))} placeholder="e.g. Client feedback round 2" /></div>
+            <div><FieldLabel>Date</FieldLabel><Input type="date" value={f.date} onChange={e => setF(v => ({ ...v, date: e.target.value }))} /></div>
+            <div className="col-span-full"><FieldLabel>Changes / new requirements (one per line)</FieldLabel><Textarea rows={3} value={f.changes} onChange={e => setF(v => ({ ...v, changes: e.target.value }))} placeholder="e.g. Buyer app: add loyalty points screen" /></div>
+            <div className="col-span-full"><Btn type="submit" className="bg-[var(--purple)]">Add version</Btn></div>
+          </form>
+        </div>
+      )}
 
       <Card className="mb-4.5">
         <h2 className="font-bold text-[15px] mb-3">Version history</h2>
@@ -58,7 +60,7 @@ export default function Requirements({ project, data, update }) {
               <div className="text-[11.5px] text-[var(--muted)]">{v.date ? new Date(v.date + "T00:00:00Z").toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : ""}</div>
               {v.changes?.length > 0 && <ul className="mt-1.5 ml-4 list-disc text-xs space-y-0.5">{v.changes.map((c, i) => <li key={i}>{c}</li>)}</ul>}
             </div>
-            <button onClick={() => del(v.id)} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2 py-1 text-lg leading-none">×</button>
+            {canDelete && <button onClick={() => del(v.id)} className="text-[var(--muted)] hover:bg-[var(--red-soft)] hover:text-[var(--red)] rounded-md px-2 py-1 text-lg leading-none">×</button>}
           </div>
         ))}
       </Card>

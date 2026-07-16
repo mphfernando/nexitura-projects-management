@@ -8,7 +8,7 @@ import { Btn, Input, Select, FieldLabel, Hint } from "../components/ui.jsx";
 function planStart(plan) { return Math.min(...plan.map(p => p.start), 46174); }
 function planEnd(plan) { return Math.max(...plan.map(p => p.end), 46326); }
 
-export default function Plan({ project, data, update, showDev, showProg }) {
+export default function Plan({ project, data, update, showDev, showProg, canAdd, canEdit, canDelete }) {
   const { profile } = useAppState();
   const { plan } = data;
   const [editingId, setEditingId] = useState(null);
@@ -68,8 +68,8 @@ export default function Plan({ project, data, update, showDev, showProg }) {
   return (
     <div>
       <div className="flex flex-wrap gap-2 items-center mb-3.5">
-        <Btn onClick={() => openEditor(null)}>＋ Add task</Btn>
-        <span className="text-xs text-[var(--muted)] flex-1">Tap any row to edit. Timeline: 1 Jun – 31 Oct 2026.</span>
+        {canAdd && <Btn onClick={() => openEditor(null)}>＋ Add task</Btn>}
+        <span className="text-xs text-[var(--muted)] flex-1">{canEdit ? "Tap any row to edit. " : ""}Timeline: 1 Jun – 31 Oct 2026.</span>
       </div>
 
       {editorOpen && (
@@ -95,7 +95,7 @@ export default function Plan({ project, data, update, showDev, showProg }) {
           <div className="flex gap-2 flex-wrap mt-3">
             <Btn onClick={save}>Save</Btn>
             <Btn variant="secondary" onClick={closeEditor}>Cancel</Btn>
-            {editingId && <Btn variant="danger" className="ml-auto" onClick={del}>Delete</Btn>}
+            {editingId && canDelete && <Btn variant="danger" className="ml-auto" onClick={del}>Delete</Btn>}
           </div>
         </div>
       )}
@@ -122,7 +122,7 @@ export default function Plan({ project, data, update, showDev, showProg }) {
               return (
                 <div key={r.id}>
                   {showPhaseHead && <div className="bg-[var(--grey-soft)] font-semibold text-xs h-7 flex items-center pl-2 rounded-md my-2 font-display" style={{ color: ph.color }}>{r.phase}. {ph.name}</div>}
-                  <div onClick={() => openEditor(r.id)} className={`flex items-center h-8 border-b border-dashed border-[var(--line)] cursor-pointer hover:bg-[var(--panel-2)] ${r.id === editingId ? "bg-[var(--accent-soft)]" : ""}`}>
+                  <div onClick={canEdit ? () => openEditor(r.id) : undefined} data-plan={r.id} className={`flex items-center h-8 border-b border-dashed border-[var(--line)] ${canEdit ? "cursor-pointer hover:bg-[var(--panel-2)]" : ""} ${r.id === editingId ? "bg-[var(--accent-soft)]" : ""}`}>
                     <div className="w-[260px] shrink-0 text-xs pr-2.5 whitespace-nowrap overflow-hidden text-ellipsis">
                       {r.code} {r.name} {showDev && <small className="text-[var(--muted)]">· {r.owner}</small>}
                     </div>

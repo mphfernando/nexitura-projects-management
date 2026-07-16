@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebase.js";
 import { useAppState } from "../../hooks/useAppState.jsx";
-import { TAB_KEYS, TAB_LABELS, FIELD_KEYS, FIELD_LABELS, defaultPermMatrix } from "../../lib/permissions.js";
+import { TAB_KEYS, TAB_LABELS, FIELD_LABELS, FIELD_GROUPS, defaultPermMatrix } from "../../lib/permissions.js";
 import { Btn, Card } from "../../components/ui.jsx";
 
 function cloneMatrix(m) {
@@ -29,13 +29,17 @@ function MatrixTable({ matrix, onToggle }) {
               <td className="px-2.5 py-2 border-t border-[var(--line)] text-center"><input type="checkbox" className="w-[17px] h-[17px]" checked={matrix.client.tabs[k]} onChange={e => onToggle("client", "tabs", k, e.target.checked)} /></td>
             </tr>
           ))}
-          <tr><td colSpan={3} className="font-semibold bg-[var(--panel-2)] px-2.5 py-1.5">Fields</td></tr>
-          {FIELD_KEYS.map(k => (
-            <tr key={k}>
-              <td className="px-2.5 py-2 border-t border-[var(--line)]">{FIELD_LABELS[k]}</td>
-              <td className="px-2.5 py-2 border-t border-[var(--line)] text-center"><input type="checkbox" className="w-[17px] h-[17px]" checked={matrix.developer.fields[k]} onChange={e => onToggle("developer", "fields", k, e.target.checked)} /></td>
-              <td className="px-2.5 py-2 border-t border-[var(--line)] text-center"><input type="checkbox" className="w-[17px] h-[17px]" checked={matrix.client.fields[k]} onChange={e => onToggle("client", "fields", k, e.target.checked)} /></td>
-            </tr>
+          {FIELD_GROUPS.map(group => (
+            <Fragment key={group.label}>
+              <tr><td colSpan={3} className="font-semibold bg-[var(--panel-2)] px-2.5 py-1.5">{group.label}</td></tr>
+              {group.keys.map(k => (
+                <tr key={k}>
+                  <td className="px-2.5 py-2 border-t border-[var(--line)]">{FIELD_LABELS[k]}</td>
+                  <td className="px-2.5 py-2 border-t border-[var(--line)] text-center"><input type="checkbox" className="w-[17px] h-[17px]" checked={matrix.developer.fields[k]} onChange={e => onToggle("developer", "fields", k, e.target.checked)} /></td>
+                  <td className="px-2.5 py-2 border-t border-[var(--line)] text-center"><input type="checkbox" className="w-[17px] h-[17px]" checked={matrix.client.fields[k]} onChange={e => onToggle("client", "fields", k, e.target.checked)} /></td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>

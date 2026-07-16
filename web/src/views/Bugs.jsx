@@ -60,7 +60,7 @@ function AddToTrackerForm({ project, weeks, onDone }) {
   );
 }
 
-export default function Bugs({ project, data, update }) {
+export default function Bugs({ project, data, update, focusReportId, focusNonce }) {
   const { profile } = useAppState();
   const [reports, setReports] = useState(null);
   const [f, setF] = useState({ title: "", description: "" });
@@ -79,6 +79,21 @@ export default function Bugs({ project, data, update }) {
     });
     return unsub;
   }, [project.id]);
+
+  // Jumping here from a "new bug reported" notification: scroll to it and
+  // flash-highlight it, same treatment as the Tracker gives assigned tasks.
+  useEffect(() => {
+    if (!focusReportId) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-report="${focusReportId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("flash-highlight");
+        setTimeout(() => el.classList.remove("flash-highlight"), 2000);
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [focusNonce, focusReportId]);
 
   async function submit(e) {
     e.preventDefault();
@@ -104,7 +119,7 @@ export default function Bugs({ project, data, update }) {
     logActivity(project.id, profile, "task added", `${report.title} (from bug report)`);
     if (member) {
       const week = data.weeks.find(w => w.id === weekId);
-      notifyAssignment({ toUid: member.uid, projectId: project.id, projectName: project.name, taskName: report.title, weekLabel: week ? week.label : "" });
+      notifyAssignment({ toUid: member.uid, projectId: project.id, projectName: project.name, taskName: report.title, taskId, weekId, weekLabel: week ? week.label : "" });
     }
     setAddingId(null);
   }
@@ -139,7 +154,7 @@ export default function Bugs({ project, data, update }) {
               const badge = statusBadge[st];
               const wasReissued = st === "new" && r.status === "added" && r.taskId;
               return (
-                <div key={r.id} className="py-3 first:pt-0">
+                <div key={r.id} data-report={r.id} className="py-3 first:pt-0">
                   <div className="flex flex-wrap gap-2.5 items-start">
                     <div className="flex-1 min-w-[180px]">
                       <div className="flex items-center gap-2 flex-wrap">

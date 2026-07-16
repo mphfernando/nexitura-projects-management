@@ -26,7 +26,7 @@ export default function ProjectPicker({ onOpenProject, onOpenAdmin, onNavigate }
 
   function openFromNotification(n) {
     markRead(n.id);
-    onNavigate(n.projectId, n.type === "bug" ? "bugs" : "tracker");
+    onNavigate(n.projectId, n.type === "bug" ? "bugs" : "tracker", n.type === "bug" ? { reportId: n.reportId } : { taskId: n.taskId, weekId: n.weekId });
   }
   async function archive(id) {
     await updateDoc(doc(db, "projects", id), { archived: true });
@@ -45,7 +45,7 @@ export default function ProjectPicker({ onOpenProject, onOpenAdmin, onNavigate }
           </div>
         </div>
         <div className="flex gap-2 items-center">
-          <NotificationBell dark={false} onSelectProject={(pid, type) => onNavigate(pid, type === "bug" ? "bugs" : "tracker")} />
+          <NotificationBell dark={false} onSelectProject={(pid, type, meta) => onNavigate(pid, type === "bug" ? "bugs" : "tracker", meta)} />
           {isUnrestricted && <Btn variant="secondary" onClick={onOpenAdmin}>Admin Panel</Btn>}
           <Btn variant="secondary" onClick={signOut}>Sign out</Btn>
         </div>

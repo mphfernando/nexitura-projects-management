@@ -38,6 +38,8 @@ export default function ProjectShell({ project, initialTab, onBackToProjects, on
 
   const visibleTabs = useMemo(() => TAB_KEYS.filter(t => canSeeTab(profile.role, activePerms, t)), [profile.role, activePerms]);
   const requestedTab = initialTab?.tab;
+  const focusMeta = initialTab?.meta || null;
+  const focusNonce = initialTab?.nonce || null;
 
   const [activeTab, setActiveTab] = useState((requestedTab && visibleTabs.includes(requestedTab)) ? requestedTab : (visibleTabs[0] || "overview"));
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function ProjectShell({ project, initialTab, onBackToProjects, on
           {profile.name || profile.email}
           <span className="opacity-60 uppercase text-[10px] font-bold">{profile.role}</span>
         </span>
-        <NotificationBell onSelectProject={(pid, type) => onNavigate(pid, type === "bug" ? "bugs" : "tracker")} />
+        <NotificationBell onSelectProject={(pid, type, meta) => onNavigate(pid, type === "bug" ? "bugs" : "tracker", meta)} />
         {isUnrestricted && <button onClick={onOpenAdmin} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">Admin Panel</button>}
         <button onClick={onBackToProjects} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">← Projects</button>
         <button onClick={signOut} className="text-xs font-semibold text-white/90 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors">Sign out</button>
@@ -101,13 +103,28 @@ export default function ProjectShell({ project, initialTab, onBackToProjects, on
       <main className="max-w-[1180px] mx-auto p-4 md:p-5">
         {data && (
           <>
-            {activeTab === "tracker" && <Tracker project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} canAdd={fieldOK("addTask")} />}
-            {activeTab === "reqs" && <Requirements project={project} data={data} update={update} />}
-            {activeTab === "plan" && <Plan project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} />}
-            {activeTab === "milestones" && <Milestones project={project} data={data} update={update} />}
+            {activeTab === "tracker" && (
+              <Tracker
+                project={project} data={data} update={update}
+                showDev={fieldOK("developerNames")} showProg={fieldOK("progress")}
+                canAdd={fieldOK("addTask")} canEditTask={fieldOK("editTask")} canDeleteTask={fieldOK("deleteTask")} canEditWeek={fieldOK("editWeek")}
+                focusTaskId={requestedTab === "tracker" ? focusMeta?.taskId : null}
+                focusWeekId={requestedTab === "tracker" ? focusMeta?.weekId : null}
+                focusNonce={focusNonce}
+              />
+            )}
+            {activeTab === "reqs" && <Requirements project={project} data={data} update={update} canAdd={fieldOK("addVersion")} canDelete={fieldOK("deleteVersion")} />}
+            {activeTab === "plan" && <Plan project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} canAdd={fieldOK("addPlanTask")} canEdit={fieldOK("editPlanTask")} canDelete={fieldOK("deletePlanTask")} />}
+            {activeTab === "milestones" && <Milestones project={project} data={data} update={update} canAdd={fieldOK("addMilestone")} canEdit={fieldOK("editMilestone")} canDelete={fieldOK("deleteMilestone")} />}
             {activeTab === "overview" && <Overview data={data} showProg={fieldOK("progress")} showDev={fieldOK("developerNames")} />}
             {activeTab === "activity" && <Activity projectId={project.id} />}
-            {activeTab === "bugs" && <Bugs project={project} data={data} update={update} />}
+            {activeTab === "bugs" && (
+              <Bugs
+                project={project} data={data} update={update}
+                focusReportId={requestedTab === "bugs" ? focusMeta?.reportId : null}
+                focusNonce={focusNonce}
+              />
+            )}
           </>
         )}
       </main>

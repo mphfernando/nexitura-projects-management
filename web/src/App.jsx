@@ -32,7 +32,7 @@ function Router() {
   // would be a no-op: React skips re-renders when state is set to a value
   // it already holds, so a plain string wouldn't force the tab switch if
   // you'd since navigated away from it manually.
-  async function openProjectTab(projectId, tab) {
+  async function openProjectTab(projectId, tab, meta) {
     let p = projects.find(x => x.id === projectId);
     if (!p) {
       try {
@@ -45,7 +45,7 @@ function Router() {
     if (!p) return;
     setAdminOpen(false);
     setOpenProject(p);
-    setInitialTab({ tab: tab || null, nonce: Date.now() });
+    setInitialTab({ tab: tab || null, meta: meta || null, nonce: Date.now() });
   }
 
   if (adminOpen) return <AdminShell onBack={backToPicker} />;
