@@ -25,6 +25,13 @@ function Router() {
   // (e.g. a bug report notification opens that project's Bugs tab directly).
   // Falls back to a direct fetch if the picker's cached project list hasn't
   // loaded that project yet, so a click never silently does nothing.
+  //
+  // initialTab is wrapped in a fresh {tab, nonce} object on every call so
+  // ProjectShell's effect always re-fires — otherwise clicking a second
+  // notification that resolves to the same tab string ("bugs" again, say)
+  // would be a no-op: React skips re-renders when state is set to a value
+  // it already holds, so a plain string wouldn't force the tab switch if
+  // you'd since navigated away from it manually.
   async function openProjectTab(projectId, tab) {
     let p = projects.find(x => x.id === projectId);
     if (!p) {
@@ -38,7 +45,7 @@ function Router() {
     if (!p) return;
     setAdminOpen(false);
     setOpenProject(p);
-    setInitialTab(tab || null);
+    setInitialTab({ tab: tab || null, nonce: Date.now() });
   }
 
   if (adminOpen) return <AdminShell onBack={backToPicker} />;

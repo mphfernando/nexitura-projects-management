@@ -37,10 +37,11 @@ export default function ProjectShell({ project, initialTab, onBackToProjects, on
   const activePerms = effectivePerms || permDefault;
 
   const visibleTabs = useMemo(() => TAB_KEYS.filter(t => canSeeTab(profile.role, activePerms, t)), [profile.role, activePerms]);
+  const requestedTab = initialTab?.tab;
 
-  const [activeTab, setActiveTab] = useState((initialTab && visibleTabs.includes(initialTab)) ? initialTab : (visibleTabs[0] || "overview"));
+  const [activeTab, setActiveTab] = useState((requestedTab && visibleTabs.includes(requestedTab)) ? requestedTab : (visibleTabs[0] || "overview"));
   useEffect(() => {
-    if (initialTab && visibleTabs.includes(initialTab)) { setActiveTab(initialTab); return; }
+    if (requestedTab && visibleTabs.includes(requestedTab)) { setActiveTab(requestedTab); return; }
     if (!visibleTabs.includes(activeTab)) setActiveTab(visibleTabs[0] || "overview");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, initialTab]);
