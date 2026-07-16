@@ -96,7 +96,7 @@ export default function ProjectShell({ project, initialTab, onBackToProjects, on
       <main className="max-w-[1180px] mx-auto p-4 md:p-5">
         {data && (
           <>
-            {activeTab === "tracker" && <Tracker project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} />}
+            {activeTab === "tracker" && <Tracker project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} canAdd={fieldOK("addTask")} />}
             {activeTab === "reqs" && <Requirements project={project} data={data} update={update} />}
             {activeTab === "plan" && <Plan project={project} data={data} update={update} showDev={fieldOK("developerNames")} showProg={fieldOK("progress")} />}
             {activeTab === "milestones" && <Milestones project={project} data={data} update={update} />}

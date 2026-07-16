@@ -6,7 +6,7 @@ import { logActivity } from "../lib/activity.js";
 import { useAppState } from "../hooks/useAppState.jsx";
 import { Btn, Input, Select, Textarea, FieldLabel, Badge, EmptyState, Hint } from "../components/ui.jsx";
 
-export default function Tracker({ project, data, update, showDev, showProg }) {
+export default function Tracker({ project, data, update, showDev, showProg, canAdd }) {
   const { profile } = useAppState();
   const { weeks, tasks } = data;
   const members = project.members || [];
@@ -123,32 +123,36 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
 
   return (
     <div>
-      {/* Desktop add-task card */}
-      <div className="hidden md:block bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--accent)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-5">
-        <h2 className="text-sm font-bold text-[var(--accent)] mb-3">＋ Add a task</h2>
-        <form onSubmit={submitAdd} className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
-          {addFormFields}
-        </form>
-        {members.length === 0 && <p className="text-xs text-[var(--muted)] mt-2">No one is assigned to this project yet — add people to it from Admin Panel → Users to enable task assignment and notifications.</p>}
-      </div>
-
-      {/* Mobile floating add button + slide-up sheet */}
-      <button
-        onClick={() => setMobileSheetOpen(true)}
-        className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[var(--accent)] text-white text-2xl font-bold shadow-[var(--shadow-md)] flex items-center justify-center"
-        aria-label="Add task"
-      >＋</button>
-      {mobileSheetOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex items-end">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setMobileSheetOpen(false)} />
-          <div className="anim-sheet-up relative w-full bg-[var(--panel)] rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto">
-            <div className="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mb-3" />
+      {canAdd && (
+        <>
+          {/* Desktop add-task card */}
+          <div className="hidden md:block bg-[var(--panel)] border border-[var(--line)] border-l-4 border-l-[var(--accent)] rounded-2xl shadow-[var(--shadow-sm)] p-4 mb-5">
             <h2 className="text-sm font-bold text-[var(--accent)] mb-3">＋ Add a task</h2>
-            <form onSubmit={submitAdd} className="grid grid-cols-2 gap-2.5">
+            <form onSubmit={submitAdd} className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>
               {addFormFields}
             </form>
+            {members.length === 0 && <p className="text-xs text-[var(--muted)] mt-2">No one is assigned to this project yet — add people to it from Admin Panel → Users to enable task assignment and notifications.</p>}
           </div>
-        </div>
+
+          {/* Mobile floating add button + slide-up sheet */}
+          <button
+            onClick={() => setMobileSheetOpen(true)}
+            className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-[var(--accent)] text-white text-2xl font-bold shadow-[var(--shadow-md)] flex items-center justify-center"
+            aria-label="Add task"
+          >＋</button>
+          {mobileSheetOpen && (
+            <div className="md:hidden fixed inset-0 z-50 flex items-end">
+              <div className="absolute inset-0 bg-black/30" onClick={() => setMobileSheetOpen(false)} />
+              <div className="anim-sheet-up relative w-full bg-[var(--panel)] rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto">
+                <div className="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mb-3" />
+                <h2 className="text-sm font-bold text-[var(--accent)] mb-3">＋ Add a task</h2>
+                <form onSubmit={submitAdd} className="grid grid-cols-2 gap-2.5">
+                  {addFormFields}
+                </form>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="flex flex-wrap gap-2 items-center mb-3.5">
@@ -187,7 +191,7 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
               onToggleOpen={() => toggleWeekOpen(w.id)}
               onSaveWeek={(label, start, end) => saveWeekEdit(w.id, label, start, end)}
               onCycleStatus={cycleStatus} onDeleteTask={deleteTask} onSaveTask={saveTaskEdit}
-              showDev={showDev} weeks={weeks} members={members}
+              showDev={showDev} weeks={weeks} members={members} canAdd={canAdd}
               onQuickAdd={() => { setAddWeek(w.id); setMobileSheetOpen(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             />
           );
@@ -197,7 +201,7 @@ export default function Tracker({ project, data, update, showDev, showProg }) {
   );
 }
 
-function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks, members, editingWeekId, setEditingWeekId, editingTaskId, setEditingTaskId, onToggleOpen, onSaveWeek, onCycleStatus, onDeleteTask, onSaveTask, onQuickAdd }) {
+function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks, members, canAdd, editingWeekId, setEditingWeekId, editingTaskId, setEditingTaskId, onToggleOpen, onSaveWeek, onCycleStatus, onDeleteTask, onSaveTask, onQuickAdd }) {
   const isEditingW = editingWeekId === w.id;
   const [label, setLabel] = useState(w.label);
   const [start, setStart] = useState(serialToISO(w.start));
@@ -272,7 +276,7 @@ function WeekBlock({ w, isNow, isOpen, done, all, rows, showProg, showDev, weeks
               </div>
             </>
           )}
-          <button onClick={onQuickAdd} className="block w-full text-left text-[var(--green)] font-semibold text-sm px-3.5 py-2.5 hover:bg-[var(--panel-2)]">＋ Add task to {w.label}</button>
+          {canAdd && <button onClick={onQuickAdd} className="block w-full text-left text-[var(--green)] font-semibold text-sm px-3.5 py-2.5 hover:bg-[var(--panel-2)]">＋ Add task to {w.label}</button>}
         </div>
       </div>
     </div>

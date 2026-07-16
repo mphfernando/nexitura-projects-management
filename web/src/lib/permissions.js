@@ -1,13 +1,13 @@
 export const TAB_KEYS = ["tracker", "reqs", "plan", "milestones", "overview", "activity", "bugs"];
 export const TAB_LABELS = { tracker: "Weekly Tracker", reqs: "Requirements", plan: "Project Plan", milestones: "Milestones", overview: "Overview", activity: "Activity", bugs: "Report Bug" };
-export const FIELD_KEYS = ["developerNames", "progress"];
-export const FIELD_LABELS = { developerNames: "Developer / assignee names", progress: "Progress indicators (% complete, done counts, overview metrics)" };
+export const FIELD_KEYS = ["developerNames", "progress", "addTask"];
+export const FIELD_LABELS = { developerNames: "Developer / assignee names", progress: "Progress indicators (% complete, done counts, overview metrics)", addTask: "Add new tasks (Weekly Tracker)" };
 export const GOVERNED_ROLES = ["developer", "client"];
 
 export function defaultPermBucket(role) {
   return {
     tabs: { tracker: true, reqs: true, plan: true, milestones: role !== "client", overview: true, activity: false, bugs: role === "client" },
-    fields: { developerNames: role !== "client", progress: true },
+    fields: { developerNames: role !== "client", progress: true, addTask: role !== "client" },
   };
 }
 export function defaultPermMatrix() {
