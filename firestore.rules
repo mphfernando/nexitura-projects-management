@@ -42,6 +42,15 @@ service cloud.firestore {
         allow read: if hasProjectAccess(projectId);
         allow write: if hasProjectAccess(projectId);
       }
+
+      // Bug reports (mainly from Clients). Anyone with project access can
+      // read/file one; only Admin/Super Admin can update status (e.g. once
+      // it's been added to the Tracker).
+      match /bugReports/{reportId} {
+        allow read, create: if hasProjectAccess(projectId);
+        allow update: if isAdmin();
+        allow delete: if false;
+      }
     }
 
     // Global default permission matrix — only Super Admin edits it.

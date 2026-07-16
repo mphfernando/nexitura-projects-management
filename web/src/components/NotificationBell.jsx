@@ -54,7 +54,11 @@ export default function NotificationBell({ onSelectProject, dark = true }) {
                 className={`w-full text-left px-4 py-3 border-b border-[var(--line)] last:border-none hover:bg-[var(--panel-2)] transition-colors ${!n.read ? "bg-[var(--accent-soft)]" : ""}`}
               >
                 <div className="text-sm">
-                  You were assigned to <strong>{n.taskName}</strong> {n.weekLabel && <span className="text-[var(--muted)]">({n.weekLabel})</span>}
+                  {n.type === "bug" ? (
+                    <>New bug reported: <strong>{n.taskName}</strong>{n.reportedBy && <span className="text-[var(--muted)]"> by {n.reportedBy}</span>}</>
+                  ) : (
+                    <>You were assigned to <strong>{n.taskName}</strong> {n.weekLabel && <span className="text-[var(--muted)]">({n.weekLabel})</span>}</>
+                  )}
                 </div>
                 <div className="text-xs text-[var(--muted)] mt-0.5">{n.projectName} · {timeAgo(n.createdAt)}</div>
               </button>

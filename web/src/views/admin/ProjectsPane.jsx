@@ -2,7 +2,7 @@ import { useState } from "react";
 import { collection, addDoc, doc, setDoc, updateDoc, getDocs } from "firebase/firestore";
 import { db } from "../../firebase.js";
 import { emptyProjectPayload } from "../../lib/seed.js";
-import { computeMembers } from "../../lib/members.js";
+import { computeMembers, computeAdmins } from "../../lib/members.js";
 import { useAppState } from "../../hooks/useAppState.jsx";
 import { useProjectSummaries } from "../../hooks/useProjectSummaries.js";
 import { Btn, Input, Card, EmptyState } from "../../components/ui.jsx";
@@ -22,8 +22,8 @@ export default function ProjectsPane() {
     try {
       const usersSnap = await getDocs(collection(db, "users"));
       const allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      const ref = await addDoc(collection(db, "projects"), { name: n, createdAt: Date.now(), archived: false, members: [] });
-      await updateDoc(doc(db, "projects", ref.id), { members: computeMembers(allUsers, ref.id) });
+      const ref = await addDoc(collection(db, "projects"), { name: n, createdAt: Date.now(), archived: false, members: [], admins: [] });
+      await updateDoc(doc(db, "projects", ref.id), { members: computeMembers(allUsers, ref.id), admins: computeAdmins(allUsers) });
       await setDoc(doc(db, "projects", ref.id, "data", "main"), { ...emptyProjectPayload(), updatedAt: Date.now() });
       setName("");
       await refreshProjects();

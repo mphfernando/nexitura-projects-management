@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { collection, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
 import { db, getSecondaryAuth, createUserWithEmailAndPassword, signOut } from "../../firebase.js";
 import { useAppState } from "../../hooks/useAppState.jsx";
-import { computeMembers } from "../../lib/members.js";
+import { computeMembers, computeAdmins } from "../../lib/members.js";
 import { Btn, Input, Select, Card, EmptyState } from "../../components/ui.jsx";
 
 const ROLE_LABELS = { developer: "Developer", client: "Client", admin: "Admin", superadmin: "Super Admin" };
@@ -24,12 +24,13 @@ export default function UsersPane() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  // Keeps every project's members list (Developers with access + all
-  // Admin/Super Admin accounts) in sync so Tracker's assignee dropdown and
-  // notifications always reflect current accounts, without needing every
+  // Keeps every project's `members` (Developers with access — Tracker's
+  // assignee dropdown) and `admins` (all Admin/Super Admin accounts — used
+  // to route bug-report notifications) in sync, without needing every
   // viewer to have permission to list /users.
   async function resyncAllProjects(allUsers) {
-    await Promise.all(projects.map(p => updateDoc(doc(db, "projects", p.id), { members: computeMembers(allUsers, p.id) })));
+    const admins = computeAdmins(allUsers);
+    await Promise.all(projects.map(p => updateDoc(doc(db, "projects", p.id), { members: computeMembers(allUsers, p.id), admins })));
   }
 
   async function createUser() {
@@ -93,8 +94,11 @@ export default function UsersPane() {
       </Card>
 
       <Card>
-        <h2 className="font-bold text-[15px] mb-1.5">All users</h2>
-        <p className="text-xs text-[var(--muted)] mb-3">Developers can be assigned tasks in projects they have access to. Admins and Super Admins are assignable in every project automatically.</p>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <h2 className="font-bold text-[15px]">All users</h2>
+          <Btn variant="secondary" onClick={() => resyncAllProjects(users)} disabled={!users}>Resync project members</Btn>
+        </div>
+        <p className="text-xs text-[var(--muted)] mb-3">Only Developers assigned to a project appear in its Tracker "Assigned to" dropdown. Use "Resync" if a dropdown looks out of date.</p>
         {users === null ? (
           <EmptyState>Loading…</EmptyState>
         ) : users.length === 0 ? (

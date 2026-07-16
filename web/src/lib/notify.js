@@ -6,6 +6,7 @@ export async function notifyAssignment({ toUid, projectId, projectName, taskName
   if (!toUid) return;
   try {
     await addDoc(collection(db, "notifications"), {
+      type: "assignment",
       toUid,
       projectId,
       projectName,
@@ -16,5 +17,24 @@ export async function notifyAssignment({ toUid, projectId, projectName, taskName
     });
   } catch (e) {
     console.error("Could not create notification:", e.message);
+  }
+}
+
+// In-app notification sent to Admin/Super Admin when a client reports a bug.
+export async function notifyBugReport({ toUid, projectId, projectName, title, reportedBy }) {
+  if (!toUid) return;
+  try {
+    await addDoc(collection(db, "notifications"), {
+      type: "bug",
+      toUid,
+      projectId,
+      projectName,
+      taskName: title,
+      reportedBy,
+      createdAt: Date.now(),
+      read: false,
+    });
+  } catch (e) {
+    console.error("Could not create bug notification:", e.message);
   }
 }
