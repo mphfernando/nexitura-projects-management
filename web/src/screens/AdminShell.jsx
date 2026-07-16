@@ -21,7 +21,7 @@ export default function AdminShell({ onBack }) {
 
   return (
     <div className="min-h-screen">
-      <header className="relative bg-[var(--purple)] text-white px-5 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 overflow-hidden">
+      <header className="relative bg-[var(--purple)] text-white px-5 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-1">
         <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-white/40 via-white/10 to-transparent" />
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center font-display font-bold text-sm">A</div>

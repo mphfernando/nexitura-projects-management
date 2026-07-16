@@ -54,7 +54,7 @@ export default function ProjectShell({ project, initialTab, onBackToProjects, on
 
   return (
     <div className="min-h-screen pb-16 md:pb-0">
-      <header className="relative bg-[var(--ink)] text-white px-5 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 overflow-hidden">
+      <header className="relative bg-[var(--ink)] text-white px-5 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-1">
         <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[var(--accent)] via-[var(--purple)] to-[var(--blue)]" />
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center font-display font-bold text-sm">N</div>
